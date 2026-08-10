@@ -2,6 +2,10 @@
 
 \ProvidesPackage{verifyThesisStyle}[2026 LaTeX Style for PLV Thesis']
 
+% tcolorbox loads xcolor internally.  Pass the complete option set before that
+% happens so later package loads do not produce an option clash.
+\PassOptionsToPackage{dvipsnames,svgnames,cmyk}{xcolor}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PACKAGES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -15,7 +19,10 @@
 
 
 %% Encoding
-\RequirePackage[utf8]{inputenx}
+\RequirePackage{iftex}
+\ifPDFTeX
+  \RequirePackage[utf8]{inputenx}
+\fi
 \RequirePackage[T1]{fontenc}
 
 
@@ -24,9 +31,10 @@
 \renewcommand{\sfdefault}{phv}     % Helvetica
 \RequirePackage[scaled]{beramono}  % Bera Mono (Bitstream Vera Sans Mono)
 \RequirePackage[final]{microtype}  % Improved typography
-\pretolerance = 1000               % Relaxes parameters for line breaks
-\tolerance    = 2000               % Relaxes parameters for line breaks
-\setlength{\emergencystretch}{1em} % Relaxes parameters for line breaks
+\pretolerance = 100                 % Prefer hyphenation to loose word spacing
+\tolerance    = 1000                % Allow moderate line-breaking flexibility
+\setlength{\emergencystretch}{0.5em}% Last resort for difficult paragraphs
+\frenchspacing                     % Use ordinary word spacing after sentences
 \RequirePackage{siunitx}           % Typesetting units
 \RequirePackage{listings}          % Typesetting code
 \lstset
@@ -70,9 +78,7 @@
 
 
 %% Graphics
-\RequirePackage[dvipsnames,
-                svgnames,
-                cmyk]{xcolor}     % Pre-defined colors
+\RequirePackage{xcolor}           % Pre-defined colors
 \RequirePackage{graphicx}         % Tool for importing images
 \graphicspath{{figures/}}
 \RequirePackage{tikz}             % Drawing tool
@@ -154,6 +160,7 @@
 
 \newcommand*{\supervisor}[1]{\def\supname{#1}}
 \newcommand*{\examiner}[1]{\def\examname{#1}}
+\newcommand*{\secondexaminer}[1]{\def\secondexamname{#1}}
 \newcommand*{\degree}[1]{\def\degreename{#1}}
 \newcommand*{\authors}[1]{\def\authornames{#1}}
 \newcommand*{\addresses}[1]{\def\addressnames{#1}}
@@ -169,6 +176,7 @@
 \newcommand*{\keywords}[1]{\def\keywordnames{#1}}
 \supervisor  {}
 \examiner    {}
+\secondexaminer {}
 \degree      {}
 \authors     {}
 \university  {{Rheinisch-Westfälische Technische Hochschule Aachen}}
@@ -206,6 +214,8 @@
       {\LARGE by \par}
       \smallskip
       {\LARGE \authornames \par}
+      \smallskip
+      {\large Advisor: \supname\par}
       \vfill
       \bigskip
       \bigskip
@@ -214,7 +224,8 @@
       \bigskip
       \bigskip
       First Examiner: \hfill Second Examiner:\\
-      Prof. Dr. Examiner 1 \hfill Prof. Dr. Examiner 1\\
+      \examname \hfill \secondexamname\\
+      \bigskip
       \bigskip
       \bigskip
       {\Large \@date \par}
@@ -235,7 +246,7 @@
   \global\let\author\relax
   \global\let\date\relax
   \global\let\and\relax
-  \cleardoublepage
+  \clearpage
 }
 
 
@@ -298,8 +309,8 @@
 \titleformat{\section}
   [block]
   {\Large\bfseries\boldmath\sffamily}
-  {\thesection}
-  {1em}
+  {\makebox[2.5em][l]{\thesection}}
+  {0pt}
   {}
   [\vspace{3pt}{\color{black!35}\titlerule[0.6pt]}]
 

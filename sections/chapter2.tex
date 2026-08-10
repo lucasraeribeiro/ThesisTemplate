@@ -1,156 +1,555 @@
 \chapter{Preliminaries}\label{chap:preliminaries}
 
-The opening paragraph of a chapter should briefly outline the chapter structure 
-by naming each section and stating what it covers.
+This chapter fixes the notation and semantic conventions used in the remainder
+of the thesis.  \Cref{sec:relations-terms} introduces relations, terms,
+positions, substitutions, and contexts.  \Cref{sec:trs-strategies} defines term
+rewrite systems and distinguishes full, outermost, and innermost rewriting.
+\Cref{sec:ptrs} extends these notions to probabilistic term rewrite systems.
+The lifted semantics and rewrite sequence trees are presented in
+\cref{sec:probabilistic-derivations}, followed by the definitions of AST, PAST,
+and SAST in \cref{sec:probabilistic-termination}.  Finally,
+\cref{sec:transformation-background} recalls the deterministic transformation
+that forms the starting point of this thesis.  Standard background on term
+rewriting can be found in \cite{baader_nipkow_1999}; the probabilistic
+conventions follow \cite{avanzini_dallago_yamada_2020,kassing_giesl_2025}.
 
-In the preliminaries you can name the formalism studied (e.g., term rewriting 
-systems, integer transition systems, probabilistic programs) and cite a 
-standard reference for further reading, e.g., \cite{baader_nipkow_1999}. 
-Do not add a citation to every definition.
 %-----------------------------------------------------------------------
-\section{Basic Definitions}\label{sec:basic-definitions}
+\section{Relations and Terms}\label{sec:relations-terms}
 %-----------------------------------------------------------------------
 
-Introduce the formal objects of the theory bottom-up: start with the most
-elementary notion (e.g., the syntactic objects) and build towards the
-property of interest (e.g., termination, complexity).
+We begin with notation for relations.  It will be used both for ordinary
+rewrite relations and for relations between probability distributions.
+Throughout the thesis, $\IN=\{0,1,2,\ldots\}$.
 
-Each definition in this section should be accompanied by:
-\begin{enumerate}
-    \item A sentence stating what the definition formalizes and why it is needed.
-    \item The formal statement in a Definition box.
-    \item A brief explanation of each component of the definition.
-    \item At least one example.
-\end{enumerate}
-
-Cover the following in order:
-\begin{enumerate}
-    \item \textbf{Syntactic Objects.} Define the elementary building blocks
-          of the formalism (e.g., the signature and the set of terms, the
-          program syntax, the set of states and transitions).
-    \item \textbf{Evaluation Relation.} Define how one object
-          evaluates to another. If several strategies exist, introduce them
-          here and state which one is used in the rest of the thesis.
-    \item \textbf{Derived Notions.} Define derived concepts such as normal
-          forms, reachability, derivation lengths, etc.
-    \item \textbf{The Property of Interest.} Give the formal definition of
-          the property the thesis analyzes (e.g., termination, innermost
-          complexity, almost-sure termination).
-\end{enumerate}
-
-% --- EXAMPLE: style illustration from a thesis on term rewriting ---
-% Replace the definitions below with those relevant to your own topic.
-
-In the begging, we start by defining [Basic Notion] that is used throughout the 
-remainder of this thesis.
-
-\begin{Definition}{[Name of First Basic Notion]}{first-notion}
-    A [Thing] is [Basic Notion] if it satisfies [Property 1] and [Property 2].
-    % Define the most elementary object of the formalism.
-    % Example (term rewriting): the signature and the set of terms.
+\begin{Definition}{Relations, closures, and normal forms}{relation-notation}
+  Let $A$ be a set and let $\to\;\subseteq A\times A$ be a binary relation.
+  For $n\in\IN$, its $n$-fold composition $\to^n$ is defined by
+  \[
+    a\to^0 b \quad\Longleftrightarrow\quad a=b
+  \]
+  and
+  \[
+    a\to^{n+1}b
+    \quad\Longleftrightarrow\quad
+    \text{there is a }c\in A\text{ with }a\to^n c\text{ and }c\to b.
+  \]
+  The relations
+  \[
+    \to^*\;=\bigcup_{n\in\IN}\to^n
+    \qquad\text{and}\qquad
+    \to^+\;=\bigcup_{n\geq 1}\to^n
+  \]
+  are the reflexive-transitive and transitive closures of $\to$,
+  respectively.  An element $a\in A$ is a \emph{normal form} if no $b\in A$
+  satisfies $a\to b$.  The set of all normal forms is denoted by
+  \[
+    \NF_{\to}=\{a\in A\mid \nexists b\in A.\ a\to b\}.
+  \]
+  The relation $\to$ is \emph{terminating}, or \emph{well-founded in the
+  forward direction}, if there is no infinite sequence
+  $a_0\to a_1\to a_2\to\cdots$.
 \end{Definition}
 
-The reason for requiring [Property 1] is [...]. 
-[Property 2] is generally assumed in the literature.
-% Explain the definition in one or two sentences, then give an example.
+A term is a finite tree whose internal nodes are function symbols and whose
+leaves may additionally be variables.
 
-\begin{example}\label{ex:first-notion}
-    % Illustrate the definition on a small, concrete input.
-    % If you use the same running example throughout the chapter, introduce
-    % it here and mark it as the running example.
-\end{example}
+\begin{Definition}{Signatures and terms}{terms}
+  A \emph{signature} $\Sigma=\biguplus_{n\in\IN}\Sigma_n$ is a finite set of
+  function symbols with fixed arities; a symbol $f\in\Sigma_n$ has arity
+  $n$.  Let $\Var$ be a countably infinite set of variables disjoint from
+  $\Sigma$.  The set $\TSet{\Sigma}{\Var}$ of terms over $\Sigma$ and $\Var$
+  is the least set satisfying:
+  \begin{itemize}
+    \item every $x\in\Var$ is in $\TSet{\Sigma}{\Var}$; and
+    \item if $f\in\Sigma_n$ and $t_1,\ldots,t_n\in\TSet{\Sigma}{\Var}$,
+          then $f(t_1,\ldots,t_n)\in\TSet{\Sigma}{\Var}$.
+  \end{itemize}
+  Constants are the symbols of arity zero.  A term without variables is
+  \emph{ground}; the set of ground terms is denoted by $\TSet{\Sigma}{\emptyset}$.
+  For a term $t$, $\Var(t)$ is the set of variables occurring in $t$.  If
+  $t=f(t_1,\ldots,t_n)$, then $\rootterm(t)=f$.
+\end{Definition}
 
-\begin{example}\label{ex:first-notion-second-example}
-    % You can add several examples for one definition, if the definition 
-    % is complex and hard to understand.
-\end{example}
+For example, with binary $\mathsf{pair}$, unary $\mathsf{first}$, and constants
+$\mathsf a$ and $\mathsf{produce}$, the expression
+$\mathsf{first}(\mathsf{pair}(\mathsf a,\mathsf{produce}))$ is a ground term.
 
+Positions identify nodes in the tree representation of a term.  We use the
+empty sequence $\varepsilon$ for the root and concatenate position components
+with a dot.
+
+\begin{Definition}{Positions, subterms, and replacement}{positions}
+  The set of positions of a term is defined recursively by
+  \[
+    \operatorname{Pos}(x)=\{\varepsilon\}
+  \]
+  for variables $x$, and
+  \[
+    \operatorname{Pos}(f(t_1,\ldots,t_n))
+      =\{\varepsilon\}\cup
+        \{i.\pi\mid 1\leq i\leq n,\ \pi\in\operatorname{Pos}(t_i)\}.
+  \]
+  For $\pi\in\operatorname{Pos}(t)$, the subterm of $t$ at $\pi$ is denoted
+  by $t|_\pi$.  Replacing this subterm by $s$ yields the term $t[s]_\pi$.
+
+  For positions $\pi$ and $\tau$, we write $\pi\leq\tau$ if $\pi$ is a
+  prefix of $\tau$, and $\pi<\tau$ if the prefix is proper.  In this case,
+  $\pi$ is \emph{above} $\tau$ and $\tau$ is \emph{below} $\pi$.  Positions
+  are \emph{parallel}, written $\pi\parallel\tau$, if neither is a prefix of
+  the other.
+\end{Definition}
+
+For
+$t=\mathsf{first}(\mathsf{pair}(\mathsf a,\mathsf{produce}))$, we have
+$t|_{1.2}=\mathsf{produce}$ and
+\[
+  t[\mathsf b]_{1.2}
+  =\mathsf{first}(\mathsf{pair}(\mathsf a,\mathsf b)).
+\]
+Moreover, $\varepsilon<1<1.2$.
+
+\begin{Definition}{Substitutions and contexts}{substitutions-contexts}
+  A \emph{substitution} is a mapping
+  $\sigma:\Var\to\TSet{\Sigma}{\Var}$ that differs from the identity on only
+  finitely many variables.  It extends homomorphically to terms:
+  \[
+    f(t_1,\ldots,t_n)\sigma
+      =f(t_1\sigma,\ldots,t_n\sigma).
+  \]
+  We call $t\sigma$ an \emph{instance} of $t$.
+
+  A \emph{context} $C$ is a term containing exactly one occurrence of a fresh
+  hole symbol $\Box$.  The term obtained by replacing the hole with $t$ is
+  denoted by $C[t]$.
+\end{Definition}
+
+Thus, a term $s$ occurs as a subterm of $t$ exactly when $t=C[s]$ for a suitable
+context $C$.
 
 %-----------------------------------------------------------------------
-\section{Known Results from the Literature}\label{sec:known-results}
+\section{Term Rewrite Systems and Strategies}\label{sec:trs-strategies}
 %-----------------------------------------------------------------------
 
-Present the lemmas and theorems from the literature that are used in
-\cref{chap:main-chapter}. 
-You do not have to prove these results unless the proof is insightful for the 
-rest of the thesis. 
-Always cite the original source.
-%
-Each result in this section should be presented as follows:
-\begin{enumerate}
-    \item A sentence explaining why the result is important and how it will
-     be used in the thesis.
-     \item The formal statement in a Lemma or Theorem box, with a citation in
-     the title.
-     \item A proof indication: either a short proof, ``Proof: see 
-     \cite{replace-with-citation}'', or a forward reference to the appendix.
-     \item (Optional) A brief remark on the scope or limitations of the result
-     if that is relevant for understanding its use in \cref{chap:main-chapter}.
-\end{enumerate}
+\begin{Definition}{Term rewrite systems}{trs}
+  A \emph{rewrite rule} is a pair $\ell\to r$ of terms such that
+  $\ell\notin\Var$ and $\Var(r)\subseteq\Var(\ell)$.  A \emph{term rewrite
+  system} (TRS) $\R$ is a finite set of rewrite rules.
 
-This section collects known results from the literature that are used in the
-rest of the thesis.
-Organize them as follows:
-\begin{enumerate}
-    \item \textbf{Auxiliary lemmas.} State small technical results about the
-          basic objects from \Cref{sec:basic-definitions} (e.g., properties
-          of substitution, closure conditions, or monotonicity).
-          These are typically needed in the proofs of \Cref{chap:main-chapter}.
+  The root symbols of left-hand sides are the \emph{defined symbols} of
+  $\R$.  The remaining symbols of the signature are called
+  \emph{constructors}.
+\end{Definition}
 
-    \item \textbf{Characterization theorem(s).} State the main theoretical
-          results from the literature about the property of interest.
-          These serve as a reference point for understanding what is already
-          known.
+The variable condition prevents a rewrite step from introducing arbitrary new
+terms through previously unbound variables.
 
-    \item \textbf{Existing automated technique(s).} If the thesis extends an
-          existing automated method (e.g., dependency pairs, polynomial
-          interpretations, ranking functions), state its correctness theorem
-          here.
-\end{enumerate}
+\begin{Definition}{Rewrite steps and redexes}{rewrite-step}
+  Let $s,t\in\TSet{\Sigma}{\Var}$.  We write
+  \[
+    s\fto_{\R,\pi}t
+  \]
+  if there are a rule $\ell\to r\in\R$ and a substitution $\sigma$ such that
+  \[
+    s|_\pi=\ell\sigma
+    \qquad\text{and}\qquad
+    t=s[r\sigma]_\pi.
+  \]
+  The occurrence $s|_\pi=\ell\sigma$ is a \emph{redex}, and $\pi$ is a
+  \emph{redex position}.  We omit $\pi$ when its value is irrelevant and
+  write $s\fto_\R t$.
+\end{Definition}
 
-% --- Example entries (replace with results relevant to your topic) ---
+The next definition restricts which redex positions may be selected.  Stating
+the conditions in terms of redex positions, rather than the eventual target
+term, is important: a position is disallowed whenever any rule is applicable
+strictly above or below it.
 
-\begin{Lemma}{[Name of Auxiliary Lemma], \cite{giesl2006mechanizing}}{aux-lemma}
-    A Lemma is a small result or auxiliary result, which is only interesting because 
-    we can use it to prove the main result.
-\end{Lemma}
+\begin{Definition}{Outermost and innermost rewriting}{rewrite-strategies}
+  Let $\operatorname{Red}_{\R}(s)$ be the set of redex positions in $s$.
+  A step $s\fto_{\R,\pi}t$ is
+  \begin{itemize}
+    \item \emph{outermost}, written $s\oto_{\R,\pi}t$, if there is no
+          $\tau\in\operatorname{Red}_{\R}(s)$ with $\tau<\pi$; and
+    \item \emph{innermost}, written $s\ito_{\R,\pi}t$, if there is no
+          $\tau\in\operatorname{Red}_{\R}(s)$ with $\pi<\tau$.
+  \end{itemize}
+  We write $\fto_\R$ for unrestricted, or \emph{full}, rewriting and omit
+  positions from $\oto_\R$ and $\ito_\R$ when they are not needed.
+\end{Definition}
 
-\begin{proof}
-    The complete proof can be found in \cite{giesl2006mechanizing}.
-\end{proof}
+Equivalently, an innermost step contracts a redex whose proper subterms are all
+normal forms.  Every reducible finite term has both an outermost and an
+innermost redex.  Consequently, full, outermost, and innermost rewriting have
+the same normal forms, although their infinite derivations can differ.
 
-\begin{Theorem}{[Name of Key Theorem], \cite{giesl2006mechanizing}}{key-theorem}
-    A Theorem is one of the main results. Everything else is defined and proven such
-    that this results can be proven.
+\begin{Definition}{Strategy-specific termination}{strategy-termination}
+  A TRS $\R$ is \emph{outermost terminating} if $\oto_\R$ is terminating,
+  and it is \emph{innermost terminating} if $\ito_\R$ is terminating.
+  Full termination is termination of $\fto_\R$.
+\end{Definition}
+
+A term is \emph{linear} if every variable occurs at most once.  A TRS is
+left-linear (right-linear) if every left-hand side (right-hand side) is linear,
+and it is linear if both conditions hold.  These properties are not required by
+the deterministic transformation of \cite{thiemann_2009_outermost}, but they
+occur in related strategy-transfer criteria and will be mentioned when those
+criteria are compared.
+
+%-----------------------------------------------------------------------
+\section{Probabilistic Term Rewrite Systems}\label{sec:ptrs}
+%-----------------------------------------------------------------------
+
+Probabilistic rules return finite multi-distributions as in
+\cite{avanzini_dallago_yamada_2020,kassing_giesl_2025}.  The prefix
+\enquote{multi} records that two alternatives may lead to syntactically equal
+terms while still being retained as separate occurrences.  This is convenient
+when individual branches are mapped by a simulation proof.
+
+\begin{Definition}{Finite multi-distributions}{finite-multidistributions}
+  Let $A$ be a non-empty set.  A \emph{finite multi-distribution} over $A$ is
+  a finite multiset
+  \[
+    \mu=\{p_1:a_1,\ldots,p_k:a_k\}
+  \]
+  with $a_i\in A$, $0<p_i\leq 1$, and $\sum_{i=1}^k p_i=1$.
+  The set of all finite multi-distributions over $A$ is denoted by
+  $\FDist(A)$, and $\Supp(\mu)$ denotes the multiset of elements carrying
+  positive weight.
+
+  For $0<q\leq1$, scaling is defined by
+  \[
+    q\cdot\mu=\{qp_1:a_1,\ldots,qp_k:a_k\}.
+  \]
+  If $F:A\to B$ is a function, its pointwise lifting to multi-distributions is
+  \[
+    F_\#(\mu)=\{p_1:F(a_1),\ldots,p_k:F(a_k)\}.
+  \]
+\end{Definition}
+
+The scaled object $q\cdot\mu$ is a weighted multiset of total weight $q$, not
+in general an element of $\FDist(A)$.  Such objects are combined with multiset
+union so that the resulting weights again sum to one.
+
+\begin{Definition}{Probabilistic term rewrite systems}{ptrs-definition}
+  A \emph{probabilistic rewrite rule} has the form
+  \[
+    \ell\to\mu,
+    \qquad
+    \mu\in\FDist(\TSet{\Sigma}{\Var}),
+  \]
+  where $\ell\notin\Var$ and
+  $\Var(r)\subseteq\Var(\ell)$ for every $r\in\Supp(\mu)$.  A
+  \emph{probabilistic term rewrite system} (PTRS) $\P$ is a finite set of
+  probabilistic rewrite rules.  We write a rule explicitly as
+  \[
+    \ell\to\{p_1:r_1,\ldots,p_k:r_k\}.
+  \]
+  An ordinary rewrite rule $\ell\to r$ is identified with the deterministic
+  probabilistic rule $\ell\to\{1:r\}$.
+\end{Definition}
+
+PTRSs may be defined more generally as countable sets of rules.  This thesis
+restricts attention to finite PTRSs over finite signatures, as required for the
+transformation to produce a finite system.
+
+One step still makes a nondeterministic choice of rule and redex position.  Once
+that choice has been made, the right-hand side determines the probabilistic
+outcomes.
+
+\begin{Definition}{Probabilistic rewrite steps}{probabilistic-rewrite-step}
+  Let $\ell\to\{p_1:r_1,\ldots,p_k:r_k\}\in\P$.  If
+  $s|_\pi=\ell\sigma$, then $s$ rewrites at $\pi$ to the multi-distribution
+  \[
+    \mu=\{p_1:s[r_1\sigma]_\pi,\ldots,
+             p_k:s[r_k\sigma]_\pi\}.
+  \]
+  This unrestricted step is written $s\fto_{\P,\pi}\mu$.  It is written
+  $s\oto_{\P,\pi}\mu$ if $\pi$ is an outermost redex position and
+  $s\ito_{\P,\pi}\mu$ if $\pi$ is an innermost redex position, using the
+  strategy conditions from \cref{sec:trs-strategies}.
+\end{Definition}
+
+Normal forms and redex positions depend only on the left-hand sides of $\P$;
+the probabilities influence the successors, but not where a rule is
+applicable.  We therefore write $\operatorname{Red}_{\P}(s)$ for the positions
+at which a left-hand side of $\P$ matches a subterm of $s$.
+
+\begin{example}[Running example]\label{ex:probabilistic-strategy-difference}
+  Let $\P_{\mathsf{ex}}$ contain the rules
+  \[
+    \begin{aligned}
+      \mathsf{produce}
+        &\to
+        \{\tfrac12:\mathsf{pair}(\mathsf a,\mathsf{produce}),
+          \tfrac12:\mathsf{pair}(\mathsf b,\mathsf{produce})\},\\
+      \mathsf{first}(\mathsf{pair}(x,y))
+        &\to\{1:x\}.
+    \end{aligned}
+  \]
+  The first probabilistic step from $\mathsf{first}(\mathsf{produce})$ is both
+  outermost and innermost, since the occurrence of $\mathsf{produce}$ is the
+  only redex.  It yields
+  \[
+    \left\{
+      \tfrac12:\mathsf{first}(\mathsf{pair}(\mathsf a,\mathsf{produce})),
+      \tfrac12:\mathsf{first}(\mathsf{pair}(\mathsf b,\mathsf{produce}))
+    \right\}.
+  \]
+  In each outcome, the root redex is outermost, while the nested
+  $\mathsf{produce}$ redex is innermost.  Thus the strategy determines which
+  redex must be selected next.
+\end{example}
+
+%-----------------------------------------------------------------------
+\section{Probabilistic Derivations}\label{sec:probabilistic-derivations}
+%-----------------------------------------------------------------------
+
+A term-to-distribution relation describes one probabilistic choice.  For a
+relation $\to\;\subseteq A\times\FDist(A)$, we use
+\[
+  \NF_{\to}=\{a\in A\mid \nexists\mu\in\FDist(A).\ a\to\mu\}
+\]
+for its normal forms.  To follow
+the probability mass through several steps, it is lifted to a relation between
+multi-distributions.  Normal forms are retained by a self-loop, so all lifted
+derivations can be viewed as infinite sequences.  The following lifting is the
+standard multidistribution semantics of probabilistic rewriting
+\cite{avanzini_dallago_yamada_2020,kassing_giesl_2025}.
+
+\begin{Definition}{Lifting to multi-distributions}{lifting}
+  Let $\to\;\subseteq A\times\FDist(A)$.  Its \emph{lifting}
+  $\Rightarrow\;\subseteq\FDist(A)\times\FDist(A)$ is defined as follows.
+  For
+  \[
+    \mu=\{p_1:a_1,\ldots,p_k:a_k\},
+  \]
+  choose, for every occurrence $a_i$, a multi-distribution $\nu_i$ such that
+  \[
+    \nu_i=\{1:a_i\}\quad\text{if }a_i\in\NF_{\to},
+    \qquad\text{or}\qquad
+    a_i\to\nu_i.
+  \]
+  Then
+  \[
+    \mu\Rightarrow\biguplus_{i=1}^k p_i\cdot\nu_i.
+  \]
+  Different legal steps may be chosen for different occurrences of the same
+  term.  Thus the lifting retains the nondeterminism of the underlying rewrite
+  relation.
+\end{Definition}
+
+For a PTRS $\P$, the liftings of $\fto_\P$, $\oto_\P$, and $\ito_\P$ are
+written $\fliftto_\P$, $\oliftto_\P$, and $\iliftto_\P$, respectively.
+
+In the running example, outermost rewriting gives the lifted derivation
+\[
+  \begin{aligned}
+    \{1:\mathsf{first}(\mathsf{produce})\}
+    &\oliftto_{\P_{\mathsf{ex}}}
+      \{\tfrac12:\mathsf{first}(\mathsf{pair}(\mathsf a,\mathsf{produce})),
+        \tfrac12:\mathsf{first}(\mathsf{pair}(\mathsf b,\mathsf{produce}))\}
+      \\
+    &\oliftto_{\P_{\mathsf{ex}}}
+      \{\tfrac12:\mathsf a,\tfrac12:\mathsf b\}.
+  \end{aligned}
+\]
+Afterwards, both normal forms are retained.  Under innermost rewriting, the
+second lifted step instead expands both nested occurrences of
+$\mathsf{produce}$, and this process continues without producing normal-form
+probability mass.
+
+Rewrite sequence trees provide an equivalent, and often more convenient,
+representation.  Probabilistic alternatives are represented by branches,
+whereas the choice of a rule and a redex position is fixed locally at each
+internal node \cite{kassing_giesl_2025}.
+
+\begin{Definition}{Rewrite sequence trees}{rewrite-sequence-tree}
+  Let $\to\;\subseteq A\times\FDist(A)$.  A \emph{rewrite sequence tree}
+  (RST) $\mathfrak T$ for $\to$ is a rooted, finitely branching tree whose
+  nodes $v$ are labelled by pairs $(p_v:a_v)$ with $0<p_v\leq1$.
+  The root has probability $1$.  If a node $v$ has children
+  $w_1,\ldots,w_k$, then
+  \[
+    a_v\to
+    \left\{
+      \frac{p_{w_1}}{p_v}:a_{w_1},\ldots,
+      \frac{p_{w_k}}{p_v}:a_{w_k}
+    \right\}.
+  \]
+  Leaves are permitted to be reducible.  The tree is \emph{fully evaluated} if
+  every leaf is labelled by a normal form.  We write
+  $N^{\mathfrak T}$ for the nodes and $\operatorname{Leaf}^{\mathfrak T}$ for
+  the leaves.  The \emph{convergence probability} of the tree is
+  \[
+    |\mathfrak T|
+      =\sum_{v\in\operatorname{Leaf}^{\mathfrak T}}p_v.
+  \]
+\end{Definition}
+
+In a partial RST, reducible leaves form an unfinished frontier, so their weight
+is included in $|\mathfrak T|$ even though they have not reached normal form.
+For a fully evaluated RST, all leaf weight is normal-form weight and
+$|\mathfrak T|$ directly represents the probability of termination.
+
+An infinite branch contributes no leaf probability.  Nevertheless, the total
+probability mass that never reaches a leaf can be zero even if infinite paths
+exist.  This distinction is the reason why ordinary well-foundedness is too
+strong for probabilistic systems.
+
+%-----------------------------------------------------------------------
+\section{Probabilistic Termination}\label{sec:probabilistic-termination}
+%-----------------------------------------------------------------------
+
+For a multi-distribution, the probability mass that has already reached a
+normal form is the following quantity.
+
+\begin{Definition}{Normal-form probability}{normal-form-probability}
+  Let $\to\;\subseteq A\times\FDist(A)$ and
+  $\mu\in\FDist(A)$.  Its \emph{normal-form probability} is
+  \[
+    |\mu|_{\to}
+      =\sum_{\substack{(p:a)\in\mu\\a\in\NF_{\to}}}p.
+  \]
+\end{Definition}
+
+Since the lifting retains normal forms, the sequence
+$|\mu_0|_{\to},|\mu_1|_{\to},\ldots$ is non-decreasing along a lifted
+derivation and bounded by one.  Its limit therefore exists.
+
+\begin{Definition}{Almost-sure termination
+  \cite{avanzini_dallago_yamada_2020}}{almost-sure-termination}
+  A term $a\in A$ is \emph{almost-surely terminating} with respect to
+  $\to$ if every infinite lifted derivation
+  \[
+    \mu_0\Rightarrow\mu_1\Rightarrow\mu_2\Rightarrow\cdots,
+    \qquad \mu_0=\{1:a\},
+  \]
+  satisfies
+  \[
+    \lim_{n\to\infty}|\mu_n|_{\to}=1.
+  \]
+  The relation $\to$ is \emph{almost-surely terminating}, written
+  $\AST[\to]$, if every $a\in A$ is almost-surely terminating.
+
+  Equivalently, $\AST[\to]$ holds if every RST for $\to$ has convergence
+  probability one; it suffices to consider fully evaluated RSTs.
+\end{Definition}
+
+This termwise formulation is equivalent to quantifying over infinite lifted
+derivations from arbitrary finite initial multi-distributions, since the
+finitely many weighted occurrences can be considered separately.
+
+For a PTRS $\P$, \emph{outermost AST} is $\AST[\oto_\P]$, and
+\emph{innermost AST} is $\AST[\ito_\P]$.  The quantification over every lifted
+derivation, or every RST, is essential.  Probabilistic choices occur as branches
+inside a tree, while different rule or redex choices yield different trees.  AST
+requires probability-one termination for all resolutions of this
+nondeterminism.
+
+\begin{example}\label{ex:ast-versus-sure-termination}
+  The single-rule PTRS
+  \[
+    \mathsf{retry}
+      \to\{\tfrac12:\mathsf{done},\tfrac12:\mathsf{retry}\}
+  \]
+  has an infinite branch that chooses $\mathsf{retry}$ every time.  After $n$
+  steps, however, the probability mass still assigned to $\mathsf{retry}$ is
+  $2^{-n}$.  Hence the normal-form probability tends to one, and the system is
+  AST even though it is not terminating in the classical sense.
+\end{example}
+
+In \cref{ex:probabilistic-strategy-difference}, the term
+$\mathsf{first}(\mathsf{produce})$ is almost-surely terminating under outermost
+rewriting: all probability mass reaches $\mathsf a$ or $\mathsf b$ after two
+steps.  Under innermost rewriting, its normal-form probability remains zero.
+This is the strategy gap that the transformation in \cref{chap:main-chapter}
+is designed to bridge.
+
+Two stronger probabilistic termination notions are useful for distinguishing
+probability-one termination from finite expected runtime.
+
+\begin{Definition}{PAST and SAST
+  \cite{avanzini_dallago_yamada_2020,kassing_giesl_2025}}{past-sast}
+  Let $\vec\mu=(\mu_n)_{n\in\IN}$ be an infinite lifted derivation.  Its
+  \emph{expected derivation length} is
+  \[
+    \edl(\vec\mu)
+      =\sum_{n=0}^{\infty}\bigl(1-|\mu_n|_{\to}\bigr).
+  \]
+  The relation $\to$ is \emph{positively almost-surely terminating}, written
+  $\PAST[\to]$, if $\edl(\vec\mu)<\infty$ for every infinite lifted derivation
+  with $\mu_0=\{1:a\}$ for some $a\in A$.
+
+  For $a\in A$, its \emph{expected derivation height} is
+  \[
+    \edh_{\to}(a)
+      =\sup\{\edl(\vec\mu)\mid
+        \vec\mu=(\mu_n)_{n\in\IN}\text{ is a lifted derivation and }
+        \mu_0=\{1:a\}\}.
+  \]
+  The relation is \emph{strongly almost-surely terminating}, written
+  $\SAST[\to]$, if $\edh_{\to}(a)<\infty$ for every $a\in A$.
+\end{Definition}
+
+The notions form the strict hierarchy
+\[
+  \SAST[\to]\quad\Longrightarrow\quad
+  \PAST[\to]\quad\Longrightarrow\quad
+  \AST[\to],
+\]
+in general \cite{avanzini_dallago_yamada_2020,kassing_giesl_2025}.  This thesis
+focuses on AST; PAST and SAST are included to make the chosen property precise
+and to prevent it from being confused with finite expected derivation length.
+PAST requires each nondeterministic derivation to have finite expected length;
+SAST additionally requires a uniform finite bound for all derivations from each
+fixed start term.
+
+%-----------------------------------------------------------------------
+\section{Transformation-Based Strategy Transfer}
+\label{sec:transformation-background}
+%-----------------------------------------------------------------------
+
+The transformation in this thesis is based on the deterministic construction
+of Thiemann \cite{thiemann_2009_outermost}.  Its extended signature contains
+fresh control symbols.  Starting from a marked source term, the transformed
+system first moves a search marker towards a redex.  Innermost rewriting permits
+the marker to descend only when the surrounding source term is not itself a
+redex; this enforces the outermost restriction.  A transformed source rule then
+performs the actual rewrite step and changes the marker into a return marker.
+Finally, deterministic administrative rules move that marker back to the root
+before the next simulated step begins.
+
+\begin{Theorem}{Deterministic outermost-to-innermost transformation
+  \cite{thiemann_2009_outermost}}{deterministic-transformation}
+  For every finite TRS $\R$ over a finite signature, the transformation
+  constructs a finite TRS $\R'$ such that
+  \[
+    \R\text{ is outermost terminating}
+    \quad\Longleftrightarrow\quad
+    \R'\text{ is innermost terminating}.
+  \]
 \end{Theorem}
 
-\begin{proof}
-    The complete proof can be found in \cite{giesl2006mechanizing}.
-\end{proof}
+\paragraph{Proof idea.}
+The forward simulation maps every outermost source step to a non-empty finite
+innermost derivation.  For the converse, arbitrary infinite innermost
+derivations over the extended signature are analysed and a suitable derivation
+is projected back to an infinite outermost source derivation.  The complete
+proof is given in \cite{thiemann_2009_outermost}.
 
-\begin{example}
-    Apply the theorem above to a concrete example.
-    Demonstrate both a case where the result applies successfully and,
-    if possible, a case where it fails due to the restriction identified above.
-    The failing case motivates the extension in \cref{chap:main-chapter}.
-\end{example}
+An earlier transformation by Raffelsieper and Zantema instead reduces
+outermost ground termination to unrestricted termination.  Its principal
+correctness result is one-way: termination of the transformed system implies
+outermost ground termination of the source.  For finite quasi-left-linear TRSs,
+the required anti-matching information and the transformed system can be
+constructed finitely \cite{raffelsieper_zantema_2009}.  This result is useful as
+a second example of the simulation-based proof pattern, but it must not be
+confused with the outermost-to-innermost equivalence in
+\cref{thm:deterministic-transformation}.
 
-\begin{Corollary}{[Name of a Direct Consequence], \cite{giesl2006mechanizing}}{key-corollary}
-    A Corollary is a (easy) consequence of some other (main) result. 
-    Still, it has to be proven, even if the proof is rather simple!
-\end{Corollary}
-
-\begin{proof}
-    The complete proof can be found in \cite{giesl2006mechanizing}.
-\end{proof}
-
-\begin{example}
-
-\end{example}
-
-% Add further Lemma and Theorem boxes as needed.
-
-You can use \textcolor{ForestGreen}{colors} to highlight differences in boxes 
-or even difficult parts in proofs. 
-However, do not make the colors too distracting and everything has to be
-readable in black and white as well.
+These deterministic simulation results motivate the probabilistic construction,
+but they do not by themselves establish an AST result.  The new proof must
+track probability mass through infinite lifted derivations or fully evaluated
+RSTs and must represent every nondeterministic outermost source choice.  The concrete
+encoding, the transformed PTRS, and these correctness arguments are introduced
+in \cref{chap:main-chapter}.

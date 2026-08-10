@@ -1,88 +1,249 @@
-\chapter{Introduction}
+\chapter{Introduction}\label{chap:introduction}
 
-The introduction motivates the topic and provides an overview of the thesis.
-It can be seen as a longer version of the abstract that follows the hourglass 
-structure again, but with emphasis on the top part of the hourglass.
-However, you can now use citations and explain everything in more detail.
-It should be accessible to any computer scientist without prior knowledge of 
-the specific area.
+Term rewriting provides a small but expressive model of computation.  A term
+rewrite system describes a computation by rules that replace matching subterms,
+and a computation is obtained by applying such rules repeatedly.  Termination
+asks whether this process can continue forever.  Besides being a fundamental
+property in its own right, termination is a prerequisite for using rewrite
+systems as executable specifications and for reasoning about the result of a
+computation.  It has therefore been studied extensively, both as a mathematical
+problem and as a target of automated verification; see, for example,
+\cite{baader_nipkow_1999}.
 
-%-----------------------------------------------------------------------
-% Background and Motivation
-%-----------------------------------------------------------------------
+Probabilistic term rewrite systems (PTRSs) extend this model by allowing a rule
+to choose among several right-hand sides according to a probability
+distribution.  They can represent randomised algorithms and probabilistic
+program fragments while retaining the syntax and compositional structure of
+term rewriting.  For such systems, classical termination is often unnecessarily
+strong.  A probabilistic computation may admit an infinite run and nevertheless
+terminate with probability one.  This motivates \emph{almost-sure termination}
+(AST), which requires the probability of eventually reaching a normal form to
+be one \cite{avanzini_dallago_yamada_2020}.  Importantly, AST is a statement
+about probability mass rather than about every individual path.
 
-The background and motivation part should cover the following points:
+\section{Motivation and Problem Statement}
+
+The order in which redexes are contracted can change termination behaviour.  A
+redex is an occurrence of a subterm that matches the left-hand side of a rule.
+Under \emph{outermost} rewriting, a redex may be contracted only if it is not
+strictly contained in another redex.  Under \emph{innermost} rewriting, the
+chosen redex may not contain another redex.  These strategies correspond to two
+opposite evaluation disciplines: outermost rewriting gives priority to the
+surrounding computation, whereas innermost rewriting evaluates arguments first.
+
+The difference is illustrated by the PTRS in
+\cref{fig:probabilistic-strategy-gap}.  Its producer constructs a pair whose
+first component is chosen probabilistically and whose second component invokes
+the producer again.  Starting with a projection of the producer, outermost
+evaluation discards the recursive component and returns the first component.
+Innermost evaluation must instead keep expanding the recursive component before
+it may apply the projection.  The same start term therefore terminates under
+outermost rewriting but not under innermost rewriting.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    >={Latex[length=2mm]},
+    rewritearrow/.style={->,semithick},
+    term/.style={
+      draw=black!45,
+      rounded corners=1.5pt,
+      fill=white,
+      inner xsep=4pt,
+      inner ysep=3pt,
+      font=\scriptsize,
+      align=center
+    },
+    rulebox/.style={
+      draw=black!60,
+      rounded corners=2pt,
+      fill=black!2,
+      inner xsep=6pt,
+      inner ysep=4pt,
+      font=\footnotesize,
+      align=center
+    },
+    note/.style={font=\scriptsize,align=center}
+  ]
+    \node[rulebox,text width=12.1cm] at (0,4.35) {%
+      $\begin{gathered}
+        \P_{\mathsf{ex}}:\qquad
+        \mathsf{produce}
+        \to
+        \left\{
+          \tfrac12:\mathsf{pair}(\mathsf a,\mathsf{produce}),
+          \tfrac12:\mathsf{pair}(\mathsf b,\mathsf{produce})
+        \right\},
+        \\
+        \mathsf{first}(\mathsf{pair}(x,y))
+        \to \{1:x\}.
+      \end{gathered}$
+    };
+
+    \filldraw[
+      rounded corners=3pt,
+      fill=RoyalBlue!4,
+      draw=RoyalBlue!55
+    ] (-6.45,3.55) rectangle (-0.15,-1.65);
+    \filldraw[
+      rounded corners=3pt,
+      fill=BurntOrange!4,
+      draw=BurntOrange!65
+    ] (0.15,3.55) rectangle (6.45,-1.65);
+
+    \node[font=\small\bfseries\sffamily,text=RoyalBlue!75!black]
+      at (-3.30,3.25) {Outermost};
+    \node[font=\small\bfseries\sffamily,text=BurntOrange!85!black]
+      at (3.30,3.25) {Innermost};
+
+    \node[term] (o0) at (-3.30,2.75)
+      {$\mathsf{first}(\mathsf{produce})$};
+    \node[term,text width=5.05cm] (o1) at (-3.30,1.45)
+      {$\mathsf{first}(\mathsf{pair}(c_1,\mathsf{produce}))$};
+    \node[term] (o2) at (-3.30,0.20)
+      {$c_1$ \textup{(normal form)}};
+
+    \draw[rewritearrow] (o0) -- node[
+      midway,anchor=east,xshift=-2pt,note
+    ] {expand producer} (o1);
+    \draw[rewritearrow] (o1) -- node[
+      midway,anchor=west,xshift=2pt,note
+    ] {contract root} (o2);
+    \node[note,text=RoyalBlue!75!black] at (-3.30,-1.10) {
+      the recursive argument is discarded\\
+      termination probability: $1$
+    };
+
+    \node[term] (i0) at (3.30,2.75)
+      {$\mathsf{first}(\mathsf{produce})$};
+    \node[term,text width=5.05cm] (i1) at (3.30,1.65)
+      {$\mathsf{first}(\mathsf{pair}(c_1,\mathsf{produce}))$};
+    \node[term,text width=5.35cm] (i2) at (3.30,0.45)
+      {$\mathsf{first}(\mathsf{pair}(c_1,
+        \mathsf{pair}(c_2,\mathsf{produce})))$};
+    \node[term,text width=5.35cm] (i3) at (3.30,-0.65)
+      {$\mathsf{first}(\mathsf{pair}(c_1,\ldots,
+        \mathsf{pair}(c_n,\mathsf{produce})\ldots))$};
+
+    \draw[rewritearrow] (i0) -- node[
+      midway,anchor=east,xshift=-2pt,note
+    ] {expand producer} (i1);
+    \draw[rewritearrow] (i1) -- node[
+      midway,anchor=west,xshift=2pt,note
+    ] {expand tail} (i2);
+    \draw[rewritearrow,dashed] (i2) -- node[
+      midway,anchor=west,xshift=2pt,note
+    ] {repeat} (i3);
+    \node[note,text=BurntOrange!85!black] at (3.30,-1.35) {
+      the root projection remains blocked\\
+      termination probability: $0$
+    };
+  \end{tikzpicture}
+  \caption{Strategy-dependent behaviour from
+    $\mathsf{first}(\mathsf{produce})$.  Each $c_i$ is independently chosen as
+    $\mathsf a$ or $\mathsf b$, each with probability $\tfrac12$.}
+  \label{fig:probabilistic-strategy-gap}
+\end{figure}
+
+A formal account using lifted probabilistic derivations is given in
+\cref{ex:probabilistic-strategy-difference}.
+
+\Needspace{10\baselineskip}
+Automated proof techniques are especially well developed for innermost
+rewriting.  This suggests reducing an outermost termination problem to an
+innermost one.  The central question of this thesis is therefore:
+
+\begin{quote}
+Can outermost almost-sure termination of a PTRS be established by transforming
+it into a PTRS whose innermost almost-sure termination can be analysed instead?
+\end{quote}
+
+The intended transformation must do more than reproduce the set of reachable
+terms.  Soundness requires it to preserve the probabilities of the original
+alternatives and to represent nondeterministic choices between redexes and
+rules.  Completeness additionally requires control over computations beginning
+with arbitrary terms over the extended signature, including administrative
+configurations.  Such computations must not introduce positive non-termination
+probability that is absent from the source system.  The essential new issue in
+the probabilistic setting is therefore the preservation of probability mass,
+rather than merely the existence of infinite reductions.
+
+\section{Related Work}
+
+Transformation-based proofs of strategy-sensitive termination have a history in
+ordinary term rewriting.  Raffelsieper and Zantema transform an outermost
+termination problem into an unrestricted termination problem.  Their principal
+transformation is sound for outermost ground termination and is effectively
+constructible as a finite TRS for finite quasi-left-linear systems
+\cite{raffelsieper_zantema_2009}.  Thiemann later introduced a different marker
+transformation for finite TRSs and proved the exact correspondence
+\[
+  \R \text{ is outermost terminating}
+  \quad\Longleftrightarrow\quad
+  \R' \text{ is innermost terminating}.
+\]
+This construction is the deterministic starting point for the transformation
+studied in this thesis \cite{thiemann_2009_outermost}.
+
+Probabilistic rewriting requires a separate semantic treatment.  Avanzini,
+Dal~Lago, and Yamada give a systematic account of PTRSs and probabilistic
+termination notions \cite{avanzini_dallago_yamada_2020}.  Kassing and Giesl
+study when innermost results for a PTRS can be transferred to unrestricted
+probabilistic rewriting, and show that additional syntactic restrictions are
+needed because duplication can affect probability mass
+\cite{kassing_giesl_2025}.  Their work concerns innermost versus full rewriting;
+it does not provide the outermost-to-innermost transformation considered here.
+
+The deterministic transformation suggests the construction, but its
+correctness proof does not transfer automatically to PTRSs.  In a deterministic
+system, one infinite reduction is enough to refute termination.  In a
+probabilistic system, the existence of infinite paths is compatible with AST
+when the total probability of infinite computations is zero.  Consequently,
+correctness has to be proved for infinite lifted derivations, or equivalently
+for fully evaluated rewrite sequence trees, while retaining their branch
+probabilities.
+
+\section{Contribution}
+
+This thesis adapts the marker-based outermost-to-innermost transformation of
+\cite{thiemann_2009_outermost} to probabilistic term rewrite systems.  Given a
+PTRS $\P$, the construction produces a PTRS $\P'$ over an extended signature.
+Fresh administrative symbols guide an innermost computation to positions that
+represent permitted outermost steps of $\P$.  The rules that move these symbols
+are deterministic; probabilistic branching occurs only when an original rule
+is simulated.
+
+The main contributions are:
+
 \begin{enumerate}
-    \item Name the research area and describe informally what objects are
-          studied (e.g., terms, integer programs, Java programs, automata) and
-          what property is of interest (e.g., termination, complexity, safety).
-    \item Explain why the property matters.
-    \item Give a small, self-contained example that illustrates the problem informally.
-    \item Explain why answering the question automatically is non-trivial and
-          what makes the problem hard in general.
+  \item a probabilistic outermost-to-innermost transformation, including the
+        extended signature and its administrative rewrite rules;
+  \item a simulation result showing that every outermost probabilistic step is
+        represented by a finite, non-empty sequence of innermost steps while
+        preserving the probabilities of all outcomes; and
+  \item a lifting of the simulation and projection arguments to infinite
+        probabilistic derivations, yielding the sound-and-complete equivalence
+        \[
+          \AST[\oto_{\P}]
+          \quad\Longleftrightarrow\quad
+          \AST[\ito_{\P'}].
+        \]
 \end{enumerate}
 
-%-----------------------------------------------------------------------
-% The Specific Open Problem
-%-----------------------------------------------------------------------
+Both sides quantify over all terms, including non-ground terms.  In particular,
+the target property concerns every term over the extended signature, not only
+terms produced by the designated source encoding.  The result established here
+concerns AST; no corresponding claim for PAST or SAST is made.
 
-The open-problem part should contain:
-\begin{enumerate}
-    \item A summary of what is already known in the area (prior results,
-          existing automated techniques, tool support).
-    \item A precise identification of the gap: e.g., no automated procedure
-          exists, existing techniques are unsound or incomplete for a relevant
-          subclass, or no efficient algorithm is known.
-    \item A clear statement of what this thesis aims to achieve.
-\end{enumerate}
+\section{Structure of the Thesis}
 
-%-----------------------------------------------------------------------
-% Related Work
-%-----------------------------------------------------------------------
-
-\subsection*{Related Work}
-
-Discuss the most relevant prior work.
-For each cited work, address the following:
-\begin{enumerate}
-    \item What does the work do? Describe the approach in one to three
-          sentences and do not just list references.
-    \item How does it relate to this thesis? Does it solve a special case,
-          use a different technique, or target a different formalism?
-    \item What limitation motivates your own contribution?
-\end{enumerate}
-
-%-----------------------------------------------------------------------
-% Contributions
-%-----------------------------------------------------------------------
-
-\subsection*{Contribution}
-
-List one item per concrete contribution. 
-Each item should:
-\begin{enumerate}
-    \item Identify what is new (a technique, a criterion, a framework, an
-          implementation, or an experimental evaluation).
-    \item State the property proved, if applicable (soundness, completeness,
-          both, or a complexity bound).
-    \item Reference the theorem, or section in which the contribution appears.
-\end{enumerate}
-
-%-----------------------------------------------------------------------
-% Thesis Structure
-%-----------------------------------------------------------------------
-
-\subsection*{Structure}
-
-End the introduction by outlining the remaining chapters.
-Give at least one sentence per chapter describing its content. 
-Do not simply write ``Chapter~X presents the main results.'' 
-
-Example: ``The remainder of this thesis is organized as follows.
-\Cref{chap:preliminaries} introduces the formal background required throughout
-this thesis, including \ldots
-Then, \Cref{chap:main-chapter} presents \ldots
-\Cref{chap:evaluation} describes the implementation and the experimental
-evaluation.
-Finally, \Cref{chap:conclusion} summarizes the results and discusses directions for
-future work.''
+The remainder of this thesis is organised as follows.
+\Cref{chap:preliminaries} introduces terms, rewrite strategies, finite
+multi-distributions, probabilistic rewriting, rewrite sequence trees, and the
+termination notions used throughout the thesis.  It also recalls the
+deterministic transformation result on which the new construction is based.
+\Cref{chap:main-chapter} presents the probabilistic transformation and proves
+its simulation and correctness properties.  \Cref{chap:evaluation} illustrates
+the construction on representative examples and discusses its applicability
+and limitations.  Finally, \cref{chap:conclusion} summarises the results and
+outlines possible extensions.
