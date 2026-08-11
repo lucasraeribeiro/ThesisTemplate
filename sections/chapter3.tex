@@ -428,10 +428,19 @@ The converse direction has to cover every term over \(\Sigma'\), including
 terms with several administrative symbols that are not produced by
 \(\operatorname{enc}\).  A direct inspection of encoded computations is
 therefore insufficient.  Following the role played by ordinary dependency
-pairs in Thiemann's completeness proof, we use the complete annotated
+pairs in Thiemann's completeness proof
+\cite{thiemann_2009_outermost}, we use the complete annotated
 dependency-pair (ADP) framework for innermost AST
 \cite{kassing_giesl_2026_adp} to extract a non-converging computation of a
 canonical shape.
+
+The classical dependency-pair method and its modular processor architecture
+are developed in \cite{arts_giesl_2000_dependency_pairs,giesl2006mechanizing}.
+All ADP definitions and processor results invoked below are due to Kassing and
+Giesl \cite{kassing_giesl_2026_adp}.  The contribution of this thesis is their
+application to the particular transformed system \(\P'\), including the
+dependency-graph analysis, orientation argument, and subsequent extraction of
+an outermost source computation.
 
 The cited ADP framework assumes that the signature contains a constant.  If
 \(\Sigma'\) has none, we adjoin one fresh inert constructor while applying the
@@ -444,9 +453,8 @@ technical extension does not restrict the main theorem.
 \subsection{ADP facts used for the extraction}
 \label{sec:adp-extraction-facts}
 
-We briefly record the ADP notation needed below.  This is an application of the
-existing framework, not part of the transformation itself.  For every defined
-symbol \(h\), let \(h^{\sharp}\) be a fresh annotated copy.  If \(r\) is a
+We briefly record only the fragment of the ADP framework needed below.  For
+every defined symbol \(h\), let \(h^{\sharp}\) be a fresh annotated copy.  If \(r\) is a
 term, \(\sharp_{\mathcal D}(r)\) denotes the term obtained by annotating all
   defined symbols in \(r\), and \(\flat(r)\) erases every annotation.  We use
   \(\flat\) pointwise for multi-distributions, ADPs, and sets of ADPs as well.  The
@@ -468,16 +476,17 @@ the true-flag ADPs in \(\mathcal A\).  In particular,
     =\NF_{\ito_{\P'}}.
 \]
 
-An ADP chain tree is an RST over annotated terms in which distinguished
-annotated steps track potentially infinite calls; every infinite branch must
-contain infinitely many such steps.  Operationally, a step at an annotation
+An ADP chain tree is an RST-like, finitely branching tree over annotated terms
+in which distinguished annotated steps track potentially infinite calls; every
+infinite branch must contain infinitely many such steps.  Operationally, a step
+at an annotation
 inserts the annotations displayed on the chosen ADP's right-hand side, whereas
 a step at an unannotated position uses its deannotated right-hand side.  A
 true-flag step below an annotation may retain the annotations above it.  These
 are the only details of the ADP rewrite relation needed below.
 
 We use the following established results from
-\cite[Thm.~4, Lem.~2, Thms.~8, 10, and~12]{kassing_giesl_2026_adp}:
+\cite{kassing_giesl_2026_adp}:
 \begin{enumerate}
   \item the innermost chain criterion states that \(\mathcal Q\) is innermost
         AST if and only if \(\DP{\mathcal Q}\) is innermost AST;

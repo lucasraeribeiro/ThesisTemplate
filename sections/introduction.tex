@@ -194,6 +194,20 @@ needed because duplication can affect probability mass
 \cite{kassing_giesl_2025}.  Their work concerns innermost versus full rewriting;
 it does not provide the outermost-to-innermost transformation considered here.
 
+Dependency-pair techniques form another line of work used in the completeness
+proof.  Arts and Giesl gave the classical treatment for termination and
+innermost termination \cite{arts_giesl_2000_dependency_pairs}, and the modular
+processor framework was subsequently refined and mechanised by Giesl,
+Thiemann, Schneider-Kamp, and Falke \cite{giesl2006mechanizing}.  Kassing and
+Giesl first adapted dependency-pair techniques to probabilistic innermost
+termination using dependency tuples
+\cite{kassing_giesl_2023_probabilistic_dp}.  Kassing, Dollase, and Giesl then
+obtained a complete framework for innermost AST using annotated dependency
+pairs \cite{kassing_dollase_giesl_2024_complete_adp}.  Kassing and Giesl
+subsequently unified and extended the ADP framework for innermost and full
+probabilistic rewriting \cite{kassing_giesl_2026_adp}; the completeness proof
+in this thesis uses its innermost chain criterion and processors.
+
 The deterministic transformation suggests the construction, but its
 correctness proof does not transfer automatically to PTRSs.  In a deterministic
 system, one infinite reduction is enough to refute termination.  In a
