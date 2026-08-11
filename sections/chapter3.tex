@@ -1,85 +1,988 @@
-\chapter{[\textit{Title of Your Main Contribution}]}\label{chap:main-chapter}
+\chapter{A Probabilistic Outermost-to-Innermost Transformation}
+\label{chap:main-chapter}
 
-This chapter contains the main theoretical (and possibly technical) contribution
-of the thesis.  It should present a coherent body of new results, organized
-into sections.
+This chapter presents the main contribution of the thesis: a transformation
+that reduces outermost almost-sure termination of a probabilistic term rewrite
+system to innermost almost-sure termination of another probabilistic term
+rewrite system.  The construction follows the marker-based architecture of
+Thiemann's deterministic transformation \cite{thiemann_2009_outermost}.  Its
+administrative rules are deterministic, while the probabilities of the source
+rules are retained at the unique point at which a source rewrite step is
+simulated.
 
-For a theory-focused thesis: introduce new notions, state lemmas/theorems,
-provide proofs, and illustrate results with examples.
-For an implementation-focused thesis: additionally describe the algorithm,
-key design decisions, and data structures.
-
-The opening paragraph of this chapter should cover the following points:
-\begin{enumerate}
-    \item State what new objects, criteria, or techniques this chapter introduces.
-    \item Introduce a running example that will be used throughout to illustrate
-          each new definition and result.
-    \item Outline the chapter structure by referencing the main sections.
-\end{enumerate}
+\Cref{sec:probabilistic-transformation} defines the transformed system and
+illustrates a complete marker cycle.  In
+\cref{sec:forward-simulation}, every outermost source step is simulated by a
+finite sequence of innermost target steps, which yields soundness.  The converse
+direction is established in \cref{sec:backward-simulation}: annotated dependency
+pairs are used to isolate the only possible source of non-converging target
+computations, and a projection then turns such computations into outermost
+source computations.  The two directions are combined in
+\cref{sec:main-equivalence}.
 
 %-----------------------------------------------------------------------
-\section{[\textit{Central Definitions / The New Framework}]}\label{sec:main-definitions}
+\section{The Probabilistic Transformation}
+\label{sec:probabilistic-transformation}
 %-----------------------------------------------------------------------
 
-% Introduce the key new notions.
-% Follow the style of \cref{chap:preliminaries}: state each definition formally,
-% add a brief intuitive explanation, and accompany it with at least one example.
-% Move from simple to complex.
+Let \(\P\) be a finite PTRS over a finite signature \(\Sigma\), and write
+\(\operatorname{ar}(f)=n\) whenever \(f\in\Sigma_n\).  The
+transformation uses three phases.  First, a \(\treduce\)-marker descends from
+the root towards a chosen outermost redex.  Second, the corresponding source
+rule is applied and the marker changes into \(\tgoup\).  Third, the
+\(\tgoup\)-marker returns to the root, where the next simulation cycle begins.
+The intermediate \(\tredex_f\)-term tests whether the current source subterm is
+a redex.  If it is, innermost rewriting forces the firing rule to be used before
+a descent rule can be applied.  The marker therefore cannot move below a source
+redex.
 
-For self-introduced notions it is even more important to explain everything
-and used multiple examples to illustrate everything.
-Use one running example that can be used through the whole section 
-and maybe some additional small examples to highlight special cases.
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    >={Latex[length=2mm]},
+    phase/.style={
+      draw=RoyalBlue!55,
+      rounded corners=2pt,
+      fill=RoyalBlue!4,
+      text width=3.35cm,
+      minimum height=1.35cm,
+      align=center,
+      font=\small
+    },
+    arr/.style={->,semithick,draw=black!65},
+    note/.style={font=\scriptsize,align=center}
+  ]
+    \node[phase] (search) at (-4.5,0)
+      {\textbf{Search}\\[2pt]
+       \(\ttop(\treduce(t))\)\\
+       descend to an outermost redex};
+    \node[phase] (fire) at (0,0)
+      {\textbf{Fire}\\[2pt]
+       apply one source rule\\
+       with unchanged weights};
+    \node[phase] (return) at (4.5,0)
+      {\textbf{Return}\\[2pt]
+       \(\ttop(\tgoup(s))\)\\
+       move the marker back to the root};
+    \draw[arr] (search) -- node[above,note] {\(\tredex_f\)} (fire);
+    \draw[arr] (fire) -- node[above,note] {\(\tresult\)} (return);
+    \draw[arr,bend left=28] (return) to node[below,note]
+      {reset for the next source step} (search);
+  \end{tikzpicture}
+  \caption{The three phases of one simulation cycle.}
+  \label{fig:transformation-phases}
+\end{figure}
 
-\begin{Definition}{[\textit{Name of Your First Definition}]}{key1}
+We now define the construction formally.  All newly introduced symbols are
+fresh, so none of them occurs in \(\Sigma\).
 
+\begin{Definition}{Probabilistic outermost-to-innermost transformation}
+  {probabilistic-transformation}
+  For every \(f\in\Sigma_n\), introduce the unary symbol \(\tcheck_f\), the
+  \(n\)-ary symbol \(\tredex_f\), and, for every \(1\leq i\leq n\), the
+  \(n\)-ary symbol \(\tin_{f,i}\).  In addition, introduce the unary symbols
+  \(\ttop\), \(\treduce\), \(\tgoup\), and \(\tresult\).  The extended
+  signature is
+  \[
+    \begin{aligned}
+      \Sigma'={}&\Sigma
+      \uplus\{\ttop,\treduce,\tgoup,\tresult\}\\
+      &\uplus\{\tcheck_f,\tredex_f\mid f\in\Sigma\}
+      \uplus\{\tin_{f,i}\mid f\in\Sigma_n,\ 1\leq i\leq n\}.
+    \end{aligned}
+  \]
+
+  The transformed PTRS \(\P'\) over \(\Sigma'\) consists of the following
+  rules.  In the schemes, \(f\in\Sigma_n\), and the variables displayed in an
+  administrative rule are pairwise distinct.  For \(n=0\), empty argument
+  lists and their parentheses are omitted.
+  \begin{alignat}{2}
+    \treduce(f(x_1,\ldots,x_n))
+      &\to\{1:\tcheck_f(\tredex_f(x_1,\ldots,x_n))\}
+      && \tag{T1}\label{rule:search}\displaybreak[0]\\
+    \tcheck_f(\tredex_f(x_1,\ldots,x_n))
+      &\to
+      \{1:\tin_{f,i}(x_1,\ldots,\treduce(x_i),\ldots,x_n)\}
+      && \tag{T2}\label{rule:descend}\\
+    \tredex_f(\ell_1,\ldots,\ell_n)
+      &\to\{p_1:\tresult(r_1),\ldots,p_k:\tresult(r_k)\}
+      && \tag{T3}\label{rule:fire}\\
+    \tcheck_f(\tresult(x))
+      &\to\{1:\tgoup(x)\}
+      && \tag{T4}\label{rule:start-return}\\
+    \tin_{f,i}(x_1,\ldots,\tgoup(x_i),\ldots,x_n)
+      &\to\{1:\tgoup(f(x_1,\ldots,x_n))\}
+      && \tag{T5}\label{rule:return}\\
+    \ttop(\tgoup(x))
+      &\to\{1:\ttop(\treduce(x))\}.
+      && \tag{T6}\label{rule:reset}
+  \end{alignat}
+  Here, \eqref{rule:descend} and \eqref{rule:return} are included for every
+  \(1\leq i\leq n\).  For every source rule
+  \[
+    f(\ell_1,\ldots,\ell_n)
+      \to\{p_1:r_1,\ldots,p_k:r_k\}\in\P,
+  \]
+  rule \eqref{rule:fire} is included with exactly the same probabilities.
+  Finally, \eqref{rule:reset} is included once.  We write
+  \[
+    \operatorname{enc}(t)=\ttop(\treduce(t))
+  \]
+  for the designated encoding of a source term.
 \end{Definition}
 
-\begin{example}\label{ex:key1}
+All rules except \eqref{rule:fire} have singleton right-hand sides.  Thus,
+administrative rewriting does not create probabilistic branching.  If several
+descent rules or several matching source rules are available, their selection
+remains nondeterministic, exactly as rule and redex selection is
+nondeterministic in the source system.
 
-\end{example}
+The construction is finite and preserves the variable condition of PTRSs.  It
+introduces
+\[
+  4+2|\Sigma|+\sum_{f\in\Sigma}\operatorname{ar}(f)
+\]
+fresh symbols and
+\[
+  1+|\P|+2|\Sigma|
+    +2\sum_{f\in\Sigma}\operatorname{ar}(f)
+\]
+rules.  In particular, its size is linear in the source rules and in the total
+arity of the source signature when size is measured by the numbers of symbols
+and rules.
 
-% Add further Definition boxes as needed, each followed by an explanation and example.
+\Needspace{11\baselineskip}
+The following elementary facts will be used repeatedly.
 
-%-----------------------------------------------------------------------
-\section{[\textit{Main Results}]}\label{sec:main-results}
-%-----------------------------------------------------------------------
-
-Each result in this section should be presented as follows:
-\begin{enumerate}
-    \item State and prove all auxiliary lemmas before the main theorem.
-    \item State the main theorem.  Typical statements are:
-          \begin{itemize}
-              \item \textbf{Soundness:} If the technique returns \textsc{Yes},
-                    then the property holds.
-              \item \textbf{Completeness:} If the property holds, the technique
-                    returns \textsc{Yes}.
-              \item \textbf{Equivalence:} The new criterion holds if and only if
-                    an existing criterion holds.
-          \end{itemize}
-    \item Provide a complete proof, structured into numbered cases for long
-          arguments.  Reference definitions and earlier results by label.
-    \item Apply the theorem to the running example from \cref{ex:key1},
-          walking through every step explicitly.
-\end{enumerate}
-
-\begin{Lemma}{[\textit{Name of Auxiliary Lemma}]}{auxiliary}
-
+\begin{Lemma}{Passive source terms and root-redex correspondence}
+  {passive-source-terms}
+  Let \(t,t_1,\ldots,t_n\in\TSet{\Sigma}{\Var}\) and
+  \(f\in\Sigma_n\).
+  \begin{enumerate}
+    \item The term \(t\) is a normal form with respect to \(\P'\).
+    \item The term \(\tredex_f(t_1,\ldots,t_n)\) is reducible by \(\P'\) if
+          and only if \(f(t_1,\ldots,t_n)\) is a root redex of \(\P\).
+  \end{enumerate}
 \end{Lemma}
 
 \begin{proof}
+  Every left-hand side of \(\P'\) has a fresh administrative root symbol.
+  Hence no subterm of a term over \(\Sigma\) can be a \(\P'\)-redex, which
+  proves the first claim.
 
+  The only rules with root \(\tredex_f\) are the instances of
+  \eqref{rule:fire}.  Such a rule matches
+  \(\tredex_f(t_1,\ldots,t_n)\) exactly when the corresponding source
+  left-hand side \(f(\ell_1,\ldots,\ell_n)\) matches
+  \(f(t_1,\ldots,t_n)\) at the root.
 \end{proof}
 
-\begin{Theorem}{[\textit{Name of Main Theorem, e.g., Soundness}]}{main}
+\begin{example}[Transformation of the running example]
+  \label{ex:transformed-producer}
+  Consider \(\P_{\mathsf{ex}}\) from
+  \cref{ex:probabilistic-strategy-difference}.  Put
+  \[
+    u_c=\mathsf{first}(\mathsf{pair}(c,\mathsf{produce}))
+    \qquad(c\in\{\mathsf a,\mathsf b\})
+  \]
+  and \(\mu=\{\tfrac12:u_{\mathsf a},\tfrac12:u_{\mathsf b}\}\).  The
+  outermost source step at position \(1\) is simulated as follows; all displayed
+  arrows are lifted innermost steps of \(\P_{\mathsf{ex}}'\):
+  \[
+    \begin{aligned}
+      \{1:\operatorname{enc}(\mathsf{first}(\mathsf{produce}))\}
+      &\iliftto
+      \{1:\ttop(\tcheck_{\mathsf{first}}(
+        \tredex_{\mathsf{first}}(\mathsf{produce})))\}\\
+      &\iliftto
+      \{1:\ttop(\tin_{\mathsf{first},1}(
+        \treduce(\mathsf{produce})))\}\\
+      &\iliftto
+      \{1:\ttop(\tin_{\mathsf{first},1}(
+        \tcheck_{\mathsf{produce}}(\tredex_{\mathsf{produce}})))\}\\
+      &\iliftto
+      \left\{
+        \begin{array}{l}
+          \tfrac12:\ttop(\tin_{\mathsf{first},1}(
+            \tcheck_{\mathsf{produce}}(
+              \tresult(\mathsf{pair}(\mathsf a,\mathsf{produce}))))),\\[-1pt]
+          \tfrac12:\ttop(\tin_{\mathsf{first},1}(
+            \tcheck_{\mathsf{produce}}(
+              \tresult(\mathsf{pair}(\mathsf b,\mathsf{produce})))))
+        \end{array}
+      \right\}\\
+      &\iliftto^{,*}
+      \{\tfrac12:\ttop(\tgoup(u_{\mathsf a})),
+        \tfrac12:\ttop(\tgoup(u_{\mathsf b}))\}\\
+      &\iliftto
+      \operatorname{enc}_{\#}(\mu).
+    \end{aligned}
+  \]
+  The system subscript \(\P'_{\mathsf{ex}}\) has been omitted from the arrows
+  to keep the display readable.  The first
+  \(\tredex_{\mathsf{first}}\)-term is not reducible, so
+  innermost rewriting permits descent into its argument.  At
+  \(\tredex_{\mathsf{produce}}\), the transformed probabilistic source rule
+  must fire.  The resulting branches have exactly the probabilities of the
+  source step.
+\end{example}
 
+%-----------------------------------------------------------------------
+\section{Forward Simulation and Soundness}
+\label{sec:forward-simulation}
+%-----------------------------------------------------------------------
+
+For a position \(\pi\), let \(|\pi|\) denote its length.  Thus
+\(|\varepsilon|=0\) and \(|i.\pi|=1+|\pi|\).  Let
+\(G:\TSet{\Sigma'}{\Var}\to\TSet{\Sigma'}{\Var}\) be defined by
+\(G(t)=\tgoup(t)\).  Its pointwise lifting \(G_{\#}\) to
+multi-distributions is the lifting from
+\cref{def:finite-multidistributions}.
+
+\Needspace{9\baselineskip}
+\begin{Lemma}{Simulation of one outermost step}{one-step-simulation}
+  Let \(t\in\TSet{\Sigma}{\Var}\), and suppose that
+  \(t\oto_{\P,\pi}\mu\), where
+  \(\mu=\{p_1:s_1,\ldots,p_k:s_k\}\).  Then
+  \[
+    \{1:\treduce(t)\}
+      \iliftto_{\P'}^{,3(|\pi|+1)}
+      G_{\#}(\mu).
+  \]
+\end{Lemma}
+
+Thus the target derivation is finite and non-empty, and it preserves every
+outcome and its probability.
+
+\begin{proof}
+  We use induction on \(|\pi|\).
+
+  First let \(\pi=\varepsilon\).  There are a source rule
+  \[
+    \ell\to\{p_1:r_1,\ldots,p_k:r_k\}\in\P
+  \]
+  and a substitution \(\sigma\) such that \(t=\ell\sigma\) and
+  \(s_j=r_j\sigma\) for every \(j\).  Write
+  \(\ell=f(\ell_1,\ldots,\ell_n)\).  By construction of \(\P'\),
+  \[
+    \begin{aligned}
+      \{1:\treduce(t)\}
+      &\iliftto_{\P'}
+        \{1:\tcheck_f(\tredex_f(\ell_1\sigma,\ldots,
+                                  \ell_n\sigma))\}\\
+      &\iliftto_{\P'}
+        \{p_1:\tcheck_f(\tresult(r_1\sigma)),\ldots,
+          p_k:\tcheck_f(\tresult(r_k\sigma))\}\\
+      &\iliftto_{\P'}
+        \{p_1:\tgoup(r_1\sigma),\ldots,
+          p_k:\tgoup(r_k\sigma)\}
+       =G_{\#}(\mu).
+    \end{aligned}
+  \]
+  These steps are innermost by
+  \cref{lem:passive-source-terms}.  In particular, the reducible
+  \(\tredex_f\)-subterm prevents a descent step from being innermost.
+
+  Now let \(\pi=i.\tau\).  Write
+  \(t=f(t_1,\ldots,t_i,\ldots,t_n)\).  The contracted source redex lies in
+  \(t_i\) at position \(\tau\), so there is a multi-distribution
+  \(\nu=\{p_1:u_1,\ldots,p_k:u_k\}\) with
+  \(t_i\oto_{\P,\tau}\nu\), and
+  \[
+    \mu=\{p_j:f(t_1,\ldots,u_j,\ldots,t_n)\mid 1\leq j\leq k\}.
+  \]
+  The induction hypothesis gives
+  \[
+    \{1:\treduce(t_i)\}
+      \iliftto_{\P'}^{,3(|\tau|+1)}
+      \{p_1:\tgoup(u_1),\ldots,p_k:\tgoup(u_k)\}.
+  \]
+  Since the step at \(i.\tau\) is outermost, \(t\) is not a root redex of
+  \(\P\).  By \cref{lem:passive-source-terms},
+  \(\tredex_f(t_1,\ldots,t_n)\) is therefore a \(\P'\)-normal form.  Hence
+  the descent step is innermost, and the induction hypothesis can be used in
+  the surrounding \(\tin_{f,i}\)-context:
+  \[
+    \begin{aligned}
+      \{1:\treduce(t)\}
+      &\iliftto_{\P'}
+        \{1:\tcheck_f(\tredex_f(t_1,\ldots,t_n))\}\\
+      &\iliftto_{\P'}
+        \{1:\tin_{f,i}(t_1,\ldots,\treduce(t_i),\ldots,t_n)\}\\
+      &\iliftto_{\P'}^{,3(|\tau|+1)}
+        \{p_j:\tin_{f,i}(t_1,\ldots,\tgoup(u_j),\ldots,t_n)
+          \mid 1\leq j\leq k\}\\
+      &\iliftto_{\P'}
+        \{p_j:\tgoup(f(t_1,\ldots,u_j,\ldots,t_n))
+          \mid 1\leq j\leq k\}\\
+      &=G_{\#}(\mu).
+    \end{aligned}
+  \]
+  The last steps are innermost: the unchanged source arguments and the terms
+  \(u_j\) are passive, so every proper subterm of the corresponding
+  \(\tin_{f,i}\)-redex is a \(\P'\)-normal form.  The number of steps is
+  \(2+3(|\tau|+1)+1=3(|\pi|+1)\), as required.
+\end{proof}
+
+Adding the surrounding \(\ttop\)-context and one application of
+\eqref{rule:reset} gives the encoded form of the simulation.
+
+\begin{Corollary}{Encoded one-step simulation}{encoded-simulation}
+  If \(t\oto_{\P,\pi}\mu\), then
+  \[
+    \{1:\operatorname{enc}(t)\}
+      \iliftto_{\P'}^{,3(|\pi|+1)+1}
+      \operatorname{enc}_{\#}(\mu).
+  \]
+\end{Corollary}
+
+\begin{proof}
+  Apply \cref{lem:one-step-simulation} below \(\ttop\), and then apply
+  \eqref{rule:reset} to every occurrence in the resulting
+  multi-distribution.
+\end{proof}
+
+The same marker discipline also rules out an infinite computation within a
+single traversal.
+
+\begin{Lemma}{Finiteness of one marker traversal}{finite-marker-traversal}
+  Let \(t\in\TSet{\Sigma'}{\Var}\) be a \(\P'\)-normal form.  Starting from
+  \(\treduce(t)\), every innermost branch either becomes stuck or reaches a
+  term \(\tgoup(s)\) after finitely many steps.  The subtree up to this first
+  \(\tgoup\)-frontier is finite.
+\end{Lemma}
+
+\begin{proof}
+  Before a firing rule is used, each descent moves the unique
+  \(\treduce\)-marker into a proper subterm of the finite normal form \(t\).
+  Hence only finitely many descents are possible.  A branch then either gets
+  stuck or uses exactly one firing rule.  In the latter case, every variable
+  value used by the matching substitution is a subterm of \(t\), hence a
+  normal form.  Since source symbols are passive, the firing outcomes are
+  normal forms as well.  Therefore \eqref{rule:start-return} creates
+  \(\tgoup\), and every subsequent return
+  step removes one stored \(\tin_{f,i}\)-context.  Thus the first
+  \(\tgoup\)-frontier is reached after finitely many further steps.  The
+  branching is finite and occurs only at the single firing step, so the whole
+  first-traversal subtree is finite.
+\end{proof}
+
+Source normal forms also produce no administrative divergence.
+
+\begin{Lemma}{Encoded normal forms terminate administratively}
+  {encoded-normal-forms}
+  If \(t\in\NF_{\oto_{\P}}\), then every innermost derivation from
+  \(\operatorname{enc}(t)\) is finite.  In particular, every maximal such
+  derivation ends in a \(\P'\)-normal form.
+\end{Lemma}
+
+\begin{proof}
+  Since all three source strategies have the same normal forms,
+  \(t\) contains no \(\P\)-redex.  Consequently, no transformed firing rule
+  \eqref{rule:fire} can be used during the search.  Finiteness follows from
+  \cref{lem:finite-marker-traversal}.  At a variable, or
+  after checking a constant for which no firing rule applies, the marker is
+  stuck.  No \(\tgoup\)-marker is created, so neither a return rule nor the
+  reset rule can become applicable.
+\end{proof}
+
+We can now lift the local simulation to whole rewrite sequence trees.  The RST
+formulation is convenient because different nodes may choose outermost redexes
+at different depths.  Each source edge is replaced independently by its finite
+simulation fragment.
+
+\begin{Theorem}{Soundness}{soundness}
+  If \(\P'\) is innermost AST, then \(\P\) is outermost AST:
+  \[
+    \AST[\ito_{\P'}]\quad\Longrightarrow\quad\AST[\oto_{\P}].
+  \]
 \end{Theorem}
 
 \begin{proof}
+  We prove the contrapositive.  Suppose that \(\P\) is not outermost AST.
+  By \cref{def:almost-sure-termination}, there is a non-converging fully
+  evaluated outermost \(\P\)-RST \(\mathfrak T\), so
+  \(|\mathfrak T|<1\).
 
+  Replace the term component \(t\) of every node label by
+  \(\operatorname{enc}(t)\).  At each internal node, unfold the finite lifted
+  derivation from \cref{cor:encoded-simulation} into an innermost RST fragment.
+  The administrative steps have
+  probability one, and \eqref{rule:fire} has exactly the probabilities of the
+  corresponding source rule.  The probability of every node is therefore
+  unchanged.  At every source leaf, append any maximal administrative
+  derivation; it is finite and ends in a \(\P'\)-normal form by
+  \cref{lem:encoded-normal-forms}.
+
+  The resulting tree is a fully evaluated innermost \(\P'\)-RST
+  \(\mathfrak T'\) with
+  \(|\mathfrak T'|=|\mathfrak T|<1\).  Hence \(\P'\) is not innermost AST.
 \end{proof}
 
-\begin{example}\label{ex:main}
-    Apply \Cref{thm:main} to the running example from \cref{ex:key1}.
-    Walk through every step of the argument explicitly.
-\end{example}
+%-----------------------------------------------------------------------
+\section{Backward Simulation and Completeness}
+\label{sec:backward-simulation}
+%-----------------------------------------------------------------------
+
+The converse direction has to cover every term over \(\Sigma'\), including
+terms with several administrative symbols that are not produced by
+\(\operatorname{enc}\).  A direct inspection of encoded computations is
+therefore insufficient.  Following the role played by ordinary dependency
+pairs in Thiemann's completeness proof, we use the complete annotated
+dependency-pair (ADP) framework for innermost AST
+\cite{kassing_giesl_2026_adp} to extract a non-converging computation of a
+canonical shape.
+
+The cited ADP framework assumes that the signature contains a constant.  If
+\(\Sigma'\) has none, we adjoin one fresh inert constructor while applying the
+framework and continue to write \(\Sigma'\) for the extended signature.  This
+does not add a rule or an ADP, and every counterexample RST over the original
+signature remains a counterexample after the extension.  The source projection
+below maps this target-only constant to a fresh variable.  Thus this harmless
+technical extension does not restrict the main theorem.
+
+\subsection{ADP facts used for the extraction}
+\label{sec:adp-extraction-facts}
+
+We briefly record the ADP notation needed below.  This is an application of the
+existing framework, not part of the transformation itself.  For every defined
+symbol \(h\), let \(h^{\sharp}\) be a fresh annotated copy.  If \(r\) is a
+term, \(\sharp_{\mathcal D}(r)\) denotes the term obtained by annotating all
+  defined symbols in \(r\), and \(\flat(r)\) erases every annotation.  We use
+  \(\flat\) pointwise for multi-distributions, ADPs, and sets of ADPs as well.  The
+canonical ADP associated with
+\(\ell\to\{p_1:r_1,\ldots,p_k:r_k\}\) is
+\[
+  \ell\to
+  \{p_1:\sharp_{\mathcal D}(r_1),\ldots,
+    p_k:\sharp_{\mathcal D}(r_k)\}^{\mathsf{true}}.
+\]
+The set of canonical ADPs of a PTRS \(\mathcal Q\) is denoted by
+\(\DP{\mathcal Q}\).  The flag \(\mathsf{true}\) records that the underlying
+rule may be used below an annotation while retaining the annotations above the
+contracted position.  The non-probabilistic system
+\(\operatorname{np}(\mathcal A)\) contains the deannotated support rules of
+the true-flag ADPs in \(\mathcal A\).  In particular,
+\[
+  \NF_{\fto_{\operatorname{np}(\DP{\P'})}}
+    =\NF_{\ito_{\P'}}.
+\]
+
+An ADP chain tree is an RST over annotated terms in which distinguished
+annotated steps track potentially infinite calls; every infinite branch must
+contain infinitely many such steps.  Operationally, a step at an annotation
+inserts the annotations displayed on the chosen ADP's right-hand side, whereas
+a step at an unannotated position uses its deannotated right-hand side.  A
+true-flag step below an annotation may retain the annotations above it.  These
+are the only details of the ADP rewrite relation needed below.
+
+We use the following established results from
+\cite[Thm.~4, Lem.~2, Thms.~8, 10, and~12]{kassing_giesl_2026_adp}:
+\begin{enumerate}
+  \item the innermost chain criterion states that \(\mathcal Q\) is innermost
+        AST if and only if \(\DP{\mathcal Q}\) is innermost AST;
+  \item the Starting Lemma permits a non-converging chain tree to be rooted at
+        an instantiated, root-annotated left-hand side.  In the innermost case,
+        this root is an argument normal form: all its proper subterms are
+        normal forms of \(\operatorname{np}(\mathcal A)\);
+  \item the innermost dependency-graph, usable-terms, and probabilistic
+        reduction-pair processors are sound and complete.
+\end{enumerate}
+Here soundness means, in particular, that if an input problem is not innermost
+AST, then at least one generated subproblem is not innermost AST.  When a chain
+tree is turned back into an ordinary RST, annotation erasure preserves every
+node probability; this is the probability-preserving completeness construction
+in the proof of the chain criterion.
+
+\subsection{Shape of non-converging target computations}
+\label{sec:target-shape}
+
+Write \(\mathcal A_0=\DP{\P'}\).  A root-symbol analysis gives the following
+sound over-approximation of the relevant part of its innermost dependency
+graph.  The only cyclic strongly connected components are contained in
+\[
+  C_{\mathsf{top}}=\{\rho_{\mathsf{top}}\}
+  \qquad\text{and}\qquad
+  C_{\mathsf{down}}
+   =\{\rho_{\mathsf{red},f},\rho_{\mathsf{desc},f,i}\mid
+       f\in\Sigma,\ 1\leq i\leq\operatorname{ar}(f)\},
+\]
+where the relevant ADPs are represented schematically by
+\begin{align*}
+  \rho_{\mathsf{top}}:\quad
+  \ttop(\tgoup(x))
+    &\to\{1:\ttop^{\sharp}(\treduce^{\sharp}(x))\}^{\mathsf{true}},\\
+  \rho_{\mathsf{red},f}:\quad
+  \treduce(f(x_1,\ldots,x_n))
+    &\to\{1:\tcheck_f^{\sharp}(
+       \tredex_f^{\sharp}(x_1,\ldots,x_n))\}^{\mathsf{true}},\\
+  \rho_{\mathsf{desc},f,i}:\quad
+  \tcheck_f(\tredex_f(x_1,\ldots,x_n))
+    &\to\{1:\tin_{f,i}^{\sharp}(x_1,\ldots,
+       \treduce^{\sharp}(x_i),\ldots,x_n)\}^{\mathsf{true}}.
+\end{align*}
+Some annotations displayed here are removed by the usable-terms processor.
+They are retained in the schematic forms only to show the canonical ADPs before
+processing.
+
+Indeed, \(\rho_{\mathsf{top}}\) may lead back to itself or into the downward
+region.  A \(\rho_{\mathsf{red},f}\)-ADP may lead to a descent or to an
+acyclic firing ADP, while a \(\rho_{\mathsf{desc},f,i}\)-ADP may lead back to
+a reduction call or to an acyclic return ADP.  The firing and return families
+do not introduce an annotated call that can lead back to them.  These possible
+edges yield the schematic condensation in
+\cref{fig:transformed-dependency-graph}.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    >={Latex[length=2mm]},
+    comp/.style={draw,rounded corners=2pt,fill=Gray!8,
+                 minimum width=3.3cm,minimum height=1.25cm,
+                 align=center,font=\small},
+    arr/.style={->,semithick},
+    lab/.style={font=\scriptsize,align=center}
+  ]
+    \node[comp] (top) at (-3.8,0)
+      {\(C_{\mathsf{top}}\)\\\(\rho_{\mathsf{top}}\)};
+    \node[comp] (down) at (0.5,0)
+      {\(C_{\mathsf{down}}\)\\
+       \(\rho_{\mathsf{red},f},\rho_{\mathsf{desc},f,i}\)};
+    \node[comp] (acyc) at (4.8,0)
+      {acyclic firing and\\return ADPs};
+    \draw[arr] (top) edge[loop above] node[lab] {reset cycle} (top);
+    \draw[arr] (top) -- (down);
+    \draw[arr] (down) edge[loop above] node[lab] {descent cycle} (down);
+    \draw[arr] (down) -- (acyc);
+  \end{tikzpicture}
+  \caption{Schematic SCC over-approximation for the innermost dependency graph
+    of \(\mathcal A_0\).  Individual downward ADPs that are not cyclic are
+    safely included in \(C_{\mathsf{down}}\).}
+  \label{fig:transformed-dependency-graph}
+\end{figure}
+
+\Needspace{12\baselineskip}
+The downward region cannot itself cause non-convergence.  We include the
+orientation argument because this is the point at which the probabilistic ADP
+framework is essential.  For every cyclic
+\(C\subseteq C_{\mathsf{down}}\), the dependency-graph processor produces
+\(C\cup\flat(\mathcal A_0\setminus C)\).  After applying the innermost
+usable-terms processor, the only right-hand sides that retain annotations have
+the following forms:
+\[
+  \begin{aligned}
+    \treduce(f(x_1,\ldots,x_n))
+      &\to\{1:\tcheck_f^{\sharp}(
+        \tredex_f(x_1,\ldots,x_n))\}^{\mathsf{true}},\\
+    \tcheck_f(\tredex_f(x_1,\ldots,x_n))
+      &\to\{1:\tin_{f,i}(x_1,\ldots,
+        \treduce^{\sharp}(x_i),\ldots,x_n)\}^{\mathsf{true}}.
+  \end{aligned}
+\]
+Consider the interpretation \(A\) given by the following multilinear
+polynomials:
+\begin{align*}
+  A(f(x_1,\ldots,x_n))
+    &=1+x_1+\cdots+x_n &&(f\in\Sigma),\\
+  A(\tredex_f(x_1,\ldots,x_n))
+    &=x_1+\cdots+x_n,\\
+  A(\treduce(x))=A(\treduce^{\sharp}(x))
+    &=1+x,\\
+  A(\tcheck_f(x))=A(\tcheck_f^{\sharp}(x))
+    &=1+x,\\
+  A(\tin_{f,i}(x_1,\ldots,x_n))
+    &=x_i,\\
+  A(\tresult(x))=A(\tgoup(x))=A(\ttop(x))
+    &=0.
+\end{align*}
+All remaining annotated symbols, including
+\(\tin_{f,i}^{\sharp}\), \(\tredex_f^{\sharp}\), and
+\(\ttop^{\sharp}\), are interpreted by zero; the same is done for the fresh
+inert constant if it was added.  These polynomials induce a weakly monotone,
+\(\IN\)-collapsible barycentric algebra, as required by the probabilistic
+reduction-pair processor
+\cite[Sec.~4.4]{kassing_giesl_2026_adp}.  All inequalities below are understood
+pointwise for every valuation of the variables.  Let
+\(A^{\sharp}_{\mathsf{sum}}(r)\) be the sum of the interpretations of all
+annotated subterms of \(r\), as in the probabilistic reduction-pair processor.
+For every \(\rho_{\mathsf{red},f}\)-ADP we obtain
+\[
+  \begin{aligned}
+    A^{\sharp}_{\mathsf{sum}}(
+      \treduce^{\sharp}(f(x_1,\ldots,x_n)))
+      &=2+\sum_{j=1}^{n}x_j\\
+      &>1+\sum_{j=1}^{n}x_j\\
+      &=A^{\sharp}_{\mathsf{sum}}(
+        \tcheck_f^{\sharp}(\tredex_f(x_1,\ldots,x_n))).
+  \end{aligned}
+\]
+For every descent ADP,
+\[
+  1+\sum_{j=1}^{n}x_j
+  \geq 1+x_i
+  =A^{\sharp}_{\mathsf{sum}}(
+    \tin_{f,i}(x_1,\ldots,
+      \treduce^{\sharp}(x_i),\ldots,x_n)).
+\]
+These inequalities verify weak decrease for the two annotated families; all
+remaining ADPs have annotation-free right-hand sides and therefore
+right-hand-side \(\sharp\)-sum zero.  The strict inequality for
+\(\rho_{\mathsf{red},f}\) is condition~(2a) of the processor.  Its additional
+deannotated condition~(2b) also holds, since the left-hand side has value
+\(2+\sum_jx_j\) and its deannotated right-hand side has value
+\(1+\sum_jx_j\).
+
+It remains to check weak expected decrease of the deannotated support rules,
+which is condition~(3).  For \eqref{rule:search} and \eqref{rule:descend}, the
+two sides have values \(2+\sum_jx_j\geq1+\sum_jx_j\) and
+\(1+\sum_jx_j\geq1+x_i\), respectively.  Rules
+\eqref{rule:start-return}, \eqref{rule:return}, and \eqref{rule:reset} give
+\(1\geq0\), \(0\geq0\), and \(0\geq0\).  The firing rules are the only
+non-singleton rules, and they are weakly decreasing in expectation because
+\[
+  A(\tredex_f(\ell_1,\ldots,\ell_n))
+    \geq 0
+    =\sum_{j=1}^{k}p_j A(\tresult(r_j)).
+\]
+Thus all conditions of the probabilistic reduction-pair processor are
+satisfied.  It removes the annotations from the
+\(\rho_{\mathsf{red},f}\)-ADPs.  A second dependency-graph step then returns no
+cyclic subproblem, because every remaining descent annotation can only lead to
+one of these now deannotated calls.  Consequently, every subproblem represented
+by \(C_{\mathsf{down}}\) is innermost AST.
+
+\begin{Lemma}{Canonical shape of target non-convergence}{canonical-target-shape}
+  If \(\P'\) is not innermost AST, then there exists a non-converging
+  innermost \(\P'\)-RST \(\mathfrak T\) whose infinite branches repeatedly
+  contain fragments of the form
+  \[
+    \begin{aligned}
+      (q_j:\ttop(\tgoup(t_j)))
+      &\xrightarrow[\varepsilon]{\mathfrak T}
+       (q_j:\ttop(\treduce(t_j)))\\[-1pt]
+      &\xrightarrow[>\varepsilon]{\mathfrak T,*}
+       (q_{j+1}:\ttop(\tgoup(t_{j+1}))),
+    \end{aligned}
+    \tag{\(*\)}\label{eq:canonical-fragment}
+  \]
+  where \(q_j\) and \(q_{j+1}\) are the cumulative probabilities of the
+  corresponding nodes and every \(t_j\) is a \(\P'\)-normal form.  The arrows
+  in \eqref{eq:canonical-fragment} describe a path in \(\mathfrak T\); they are
+  not lifted multi-distribution arrows.  Below every displayed root step, the subtree
+  up to the next \(\ttop(\tgoup(\cdot))\)-frontier or an administrative normal
+  form is finite.
+\end{Lemma}
+
+\begin{proof}
+  By the innermost chain criterion,
+  \(\mathcal A_0=\DP{\P'}\) is not innermost AST.  Apply the complete
+  innermost dependency-graph processor.  All acyclic subproblems are trivially
+  innermost AST, and the preceding reduction-pair argument proves innermost AST
+  of every downward subproblem.  Therefore the remaining top subproblem
+  \[
+    \mathcal B_{\mathsf{top}}
+      =C_{\mathsf{top}}
+        \cup\flat(\mathcal A_0\setminus C_{\mathsf{top}})
+  \]
+  is not innermost AST.  Applying the innermost usable-terms processor removes
+  the non-usable \(\treduce^{\sharp}\)-annotation from the reset ADP, leaving
+  \[
+    \ttop(\tgoup(x))
+      \to\{1:\ttop^{\sharp}(\treduce(x))\}^{\mathsf{true}}.
+  \]
+  Denote the resulting problem by
+  \(\mathcal B_{\mathsf{top}}^{\mathrm{UT}}\).
+  Every other ADP in the processed problem has an annotation-free right-hand
+  side.  By soundness of the usable-terms processor, this processed problem is
+  still not innermost AST.
+
+  The Starting Lemma now gives a non-converging chain tree rooted at an
+  argument-normal instance of a left-hand side with only its root annotated.
+  This left-hand side must belong to \(\rho_{\mathsf{top}}\).  Otherwise, its
+  first annotated step would remove the only annotation, and no resulting
+  infinite path could contain the infinitely many annotated steps required of
+  a chain tree.  Thus the root has the form
+  \(\ttop^{\sharp}(\tgoup(t_1))\).  Moreover, the only annotation that can
+  recur is \(\ttop^{\sharp}\).  Consequently, every infinite path repeatedly
+  uses the reset ADP at the root; between two such uses, true-flag steps preserve
+  the outer annotation while rewriting strictly below it.
+
+  Erase all annotations.  The dependency-graph and usable-terms processors used
+  above only erased annotations and retained every \(\mathsf{true}\)-flag.
+  Consequently,
+  \[
+    \operatorname{np}(\mathcal B_{\mathsf{top}}^{\mathrm{UT}})
+      =\operatorname{np}(\mathcal A_0),
+  \]
+  whose normal forms coincide with the \(\P'\)-normal forms by the chain
+  criterion.  Every processed ADP deannotates to the corresponding rule of
+  \(\P'\), with the same probabilities.
+  \Needspace{3\baselineskip}
+  Thus the probability-preserving
+  erasure construction from the chain criterion preserves innermostness and
+  yields a non-converging innermost \(\P'\)-RST.  Its recurring distinguished
+  step is precisely the deterministic root step
+  \[
+    \ttop(\tgoup(t_j))
+      \ito_{\P',\varepsilon}
+      \{1:\ttop(\treduce(t_j))\}.
+  \]
+  Between two such steps, rewriting occurs strictly below the persistent
+  \(\ttop\)-symbol, which gives \eqref{eq:canonical-fragment}.
+
+  Finally, the displayed root step is innermost.  Hence its proper subterm
+  \(\tgoup(t_j)\), and therefore \(t_j\), is a \(\P'\)-normal form.  Applying
+  \cref{lem:finite-marker-traversal} below \(\ttop\) proves finiteness of every
+  first-return subtree claimed in the statement.
+\end{proof}
+
+\subsection{Projection to source terms}
+\label{sec:source-projection}
+
+The terms \(t_j\) in \cref{lem:canonical-target-shape} may contain arbitrary
+symbols from \(\Sigma'\).  We therefore project them to source terms.  We
+harmlessly enlarge the countably infinite variable supply by a disjoint
+countable set of fresh variables; variable renaming identifies the enlarged
+supply with the one fixed in \cref{def:terms}.
+
+\begin{Definition}{Source projection}{source-projection}
+  Let
+  \[
+    \mathcal U
+      =\{u\in\TSet{\Sigma'}{\Var}\setminus\Var
+          \mid\rootterm(u)\in\Sigma'\setminus\Sigma\}.
+  \]
+  Choose a set \(Z=\{z_u\mid u\in\mathcal U\}\), disjoint from \(\Var\),
+  whose elements are pairwise distinct, and put
+  \(\widehat{\Var}=\Var\uplus Z\).  Define
+  \[
+    \operatorname{src}:\TSet{\Sigma'}{\Var}
+      \longrightarrow \TSet{\Sigma}{\widehat{\Var}}
+  \]
+  \Needspace{12\baselineskip}
+  by
+  \[
+    \begin{aligned}
+      \operatorname{src}(x)&=x &&(x\in\Var),\\
+      \operatorname{src}(f(t_1,\ldots,t_n))
+        &=f(\operatorname{src}(t_1),\ldots,
+             \operatorname{src}(t_n)) &&(f\in\Sigma),\\
+      \operatorname{src}(u)&=z_u
+        &&(\rootterm(u)\in\Sigma'\setminus\Sigma).
+    \end{aligned}
+  \]
+  For a target substitution
+  \(\delta:\Var\to\TSet{\Sigma'}{\Var}\), define the source substitution
+  \(\operatorname{src}(\delta)\) on \(\widehat{\Var}\) by
+  \[
+    x\operatorname{src}(\delta)=\operatorname{src}(x\delta)
+      \quad(x\in\Var),
+    \qquad
+    z\operatorname{src}(\delta)=z
+      \quad(z\in Z).
+  \]
+  The term map is lifted pointwise to multi-distributions as
+  \(\operatorname{src}_{\#}\).
+\end{Definition}
+
+Fresh variables deliberately hide the internal structure of administrative
+subterms.  Choosing a different variable for every such term makes
+\(\operatorname{src}\) injective, which is needed to reflect source matching.
+
+\begin{Lemma}{Projection and matching}{projection-matching}
+  Let \(\ell\in\TSet{\Sigma}{\Var}\) and
+  \(t\in\TSet{\Sigma'}{\Var}\).
+  \begin{enumerate}
+    \item For every target substitution \(\delta\),
+          \(\operatorname{src}(\ell\delta)
+            =\ell\operatorname{src}(\delta)\).
+    \item If \(\sigma\) is a substitution over \(\widehat{\Var}\) and
+          \(\operatorname{src}(t)=\ell\sigma\), then there is a target
+          substitution \(\delta\) such that \(t=\ell\delta\).
+  \end{enumerate}
+\end{Lemma}
+
+\begin{proof}
+  The first claim follows by structural induction on \(\ell\).
+
+  For the second claim, observe first that \(\operatorname{src}\) is
+  injective: source-rooted terms retain their root and are handled
+  homomorphically, whereas every administrative-rooted term is mapped to its
+  own fresh variable.  Every value \(x\sigma\) occurring in the equality
+  \(\operatorname{src}(t)=\ell\sigma\) is therefore the projection of a
+  unique corresponding subterm of \(t\).  Assign that subterm to
+  \(x\delta\).  Repeated occurrences of \(x\) give the same subterm by
+  injectivity.  A structural induction on \(\ell\) now yields
+  \(t=\ell\delta\).
+\end{proof}
+
+We can now reverse a complete marker traversal.  The statement is
+multi-distribution-valued: this is where the probabilities of the transformed
+firing rule are transferred back to the source system.
+
+\begin{Lemma}{Extraction of one outermost step}{one-step-extraction}
+  Let \(t\in\TSet{\Sigma'}{\Var}\) be a \(\P'\)-normal form.  If
+  \[
+    \{1:\treduce(t)\}
+      \iliftto_{\P'}^{+}
+      G_{\#}(\mu),
+  \]
+  then
+  \[
+    \operatorname{src}(t)
+      \oto_{\P}
+      \operatorname{src}_{\#}(\mu),
+  \]
+  and every term in \(\Supp(\mu)\) is a \(\P'\)-normal form.
+\end{Lemma}
+
+\begin{proof}
+  Normal-form retention may add self-loops after the traversal has finished; we
+  discard such a suffix and consider the first multi-distribution whose terms all
+  have root \(\tgoup\).
+  We use induction on the number of applications of the descent rule
+  \eqref{rule:descend}.  Since the derivation reaches a term with root
+  \(\tgoup\), its first step must use \eqref{rule:search}.  Thus
+  \(t=f(t_1,\ldots,t_n)\) for some \(f\in\Sigma_n\), and all \(t_i\) are
+  \(\P'\)-normal forms.
+
+  First suppose that the transformed firing rule is used next.  Then there are
+  a source rule
+  \[
+    f(\ell_1,\ldots,\ell_n)
+      \to\{p_1:r_1,\ldots,p_k:r_k\}\in\P
+  \]
+  and a substitution \(\delta\) with \(t_i=\ell_i\delta\).  The only possible
+  continuation to a \(\tgoup\)-rooted multi-distribution uses
+  \eqref{rule:start-return}, so
+  \(\mu=\{p_1:r_1\delta,\ldots,p_k:r_k\delta\}\).  By
+  \cref{lem:projection-matching},
+  \[
+    \operatorname{src}(t)
+      =f(\ell_1,\ldots,\ell_n)\operatorname{src}(\delta)
+      \oto_{\P,\varepsilon}
+      \{p_j:r_j\operatorname{src}(\delta)\mid1\leq j\leq k\}
+      =\operatorname{src}_{\#}(\mu).
+  \]
+  Each \(r_j\delta\) is a \(\P'\)-normal form: its source symbols are passive,
+  and every substitution value that occurs in \(r_j\) also occurs in the
+  left-hand side and is therefore a subterm of the normal form \(t\).
+
+  Otherwise, the derivation uses \eqref{rule:descend} for some argument
+  \(i\).  It first produces
+  \[
+    \tin_{f,i}(t_1,\ldots,\treduce(t_i),\ldots,t_n).
+  \]
+  Before the outer \(\tin_{f,i}\)-rule can return, the inner marker must
+  complete a shorter traversal
+  \[
+    \{1:\treduce(t_i)\}
+      \iliftto_{\P'}^{+}G_{\#}(\nu).
+  \]
+  The induction hypothesis yields
+  \(\operatorname{src}(t_i)\oto_{\P}
+    \operatorname{src}_{\#}(\nu)\), and all outcomes of \(\nu\) are normal
+  forms of \(\P'\).  The final return rule puts these outcomes back into the
+  \(i\)-th argument of \(f\).  More explicitly, if
+  \(\nu=\{q_h:u_h\mid1\leq h\leq m\}\), then
+  \[
+    \mu=\{q_h:f(t_1,\ldots,u_h,\ldots,t_n)
+             \mid1\leq h\leq m\},
+  \]
+  and pointwise projection gives the corresponding contextual lifting of the
+  source step.
+
+  It remains to show that the resulting contextual source step is outermost.
+  If \(\operatorname{src}(t)\) were a root redex of \(\P\), the matching
+  reflection in \cref{lem:projection-matching} would imply that
+  \(t\) matches the corresponding source left-hand side.  Then
+  \(\tredex_f(t_1,\ldots,t_n)\) would be reducible below \(\tcheck_f\), so the
+  descent rule could not have been applied innermost.  Thus the root is not a
+  source redex.  The induction hypothesis already excludes every redex at an
+  ancestor position inside \(t_i\), so no source redex is above the contextual
+  step.  It is therefore outermost.  Its outcomes are normal forms of \(\P'\), since the
+  unchanged arguments and all outcomes of \(\nu\) are normal and \(f\) is
+  passive in \(\P'\).
+\end{proof}
+
+\begin{Theorem}{Completeness}{completeness}
+  If \(\P\) is outermost AST, then \(\P'\) is innermost AST:
+  \[
+    \AST[\oto_{\P}]\quad\Longrightarrow\quad\AST[\ito_{\P'}].
+  \]
+\end{Theorem}
+
+\begin{proof}
+  Again we prove the contrapositive.  Suppose that \(\P'\) is not innermost
+  AST.  By \cref{lem:canonical-target-shape}, there is a non-converging
+  innermost \(\P'\)-RST whose infinite branches repeatedly have the form
+  \eqref{eq:canonical-fragment}, with every \(t_j\) in normal form.
+
+  First normalize every finite fragment that ends partway through a marker
+  traversal: extend it only until it reaches the next
+  \(\ttop(\tgoup(\cdot))\)-frontier or an administrative normal form.  This is
+  always a finite expansion by \cref{lem:finite-marker-traversal}.  Replacing a
+  frontier leaf by such a finite subtree preserves its total weight, so this
+  normalization does not change the convergence probability.
+
+  \Needspace{14\baselineskip}
+  Now consider a macro-node \((q:\ttop(\tgoup(t)))\).  Its reset child is
+  \((q:\ttop(\treduce(t)))\).  If the subsequent administrative search gets
+  stuck, leave the corresponding source macro-node unexpanded.  Otherwise,
+  collect all nodes at the next \(\ttop(\tgoup(\cdot))\)-frontier.  Dividing
+  their weights by \(q\) gives a multi-distribution
+  \(G_{\#}(\mu)\), and the finite first-return subtree represents
+  \[
+    \{1:\treduce(t)\}\iliftto_{\P'}^{+}G_{\#}(\mu).
+  \]
+  This works at the multi-distribution level, rather than for just one path: before
+  the firing rule there is no probabilistic branching, and after it all
+  branches perform only the deterministic return rules.
+
+  Contract this whole first-return subtree to one edge, remove the outer
+  administrative context, and label the macro-node by
+  \(\operatorname{src}(t)\).  At every macro-node with children,
+  \cref{lem:one-step-extraction} proves that the new edge is one outermost
+  \(\P\)-step and that the relative child weights are exactly its source
+  probabilities.  Hence the contracted object is an outermost \(\P\)-RST.
+
+  Contraction changes neither the probability of a macro-node nor the weight of
+  any leaf: administrative edges have weight one, and every firing frontier is
+  grouped with all of its probabilistic children.  Thus the source RST has the
+  same convergence probability, which is smaller than one.  Its variables lie
+  in the countably infinite set \(\widehat{\Var}\); applying a bijective variable
+  renaming identifies this with the supply \(\Var\) fixed in the preliminaries
+  and preserves all rewrite steps.  Therefore \(\P\) is not outermost AST.
+\end{proof}
+
+%-----------------------------------------------------------------------
+\section{Main Equivalence}
+\label{sec:main-equivalence}
+%-----------------------------------------------------------------------
+
+Combining \cref{thm:soundness,thm:completeness} yields the desired result.
+
+\begin{Theorem}{Soundness and completeness of the transformation}{main}
+  Let \(\P\) be a finite PTRS over a finite signature \(\Sigma\), and let
+  \(\P'\) be the PTRS from
+  \cref{def:probabilistic-transformation}.  Then
+  \[
+    \AST[\oto_{\P}]
+      \quad\Longleftrightarrow\quad
+    \AST[\ito_{\P'}].
+  \]
+  The right-hand side quantifies over all terms over the extended signature
+  \(\Sigma'\), not only terms of the form \(\operatorname{enc}(t)\).
+\end{Theorem}
+
+\begin{proof}
+  The implication from right to left is
+  \cref{thm:soundness}; the implication from left to right is
+  \cref{thm:completeness}.
+\end{proof}
+
+The theorem concerns AST.  The simulation preserves the probability of every
+source outcome, but it inserts a number of administrative steps that depends on
+the depth of the selected redex.  Therefore the result does not by itself imply
+an analogous equivalence for PAST or SAST, both of which additionally constrain
+expected derivation lengths.

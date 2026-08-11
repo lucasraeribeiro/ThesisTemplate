@@ -429,6 +429,18 @@
 \declaretheorem[style = definition, sibling = theorem]{example}
 \declaretheorem[style = definition, sibling = theorem]{notation}
 \declaretheorem[style = remark,     sibling = theorem]{remark}
+% Hyperref destinations must include the section because the shared theorem
+% counter is reset in every section.
+\renewcommand*{\theHtheorem}{\theHsection.\arabic{theorem}}
+\renewcommand*{\theHcorollary}{\theHsection.\arabic{theorem}}
+\renewcommand*{\theHlemma}{\theHsection.\arabic{theorem}}
+\renewcommand*{\theHproposition}{\theHsection.\arabic{theorem}}
+\renewcommand*{\theHobservation}{\theHsection.\arabic{theorem}}
+\renewcommand*{\theHconjecture}{\theHsection.\arabic{theorem}}
+\renewcommand*{\theHdefinition}{\theHsection.\arabic{theorem}}
+\renewcommand*{\theHexample}{\theHsection.\arabic{theorem}}
+\renewcommand*{\theHnotation}{\theHsection.\arabic{theorem}}
+\renewcommand*{\theHremark}{\theHsection.\arabic{theorem}}
 \crefname{observation}{Observation}{Observations}
 \Crefname{observation}{Observation}{Observations}
 \crefname{conjecture}{Conjecture}{Conjectures}
@@ -442,22 +454,30 @@
 \tcbuselibrary{theorems}
 
 % Theorem Box
-\newtcbtheorem[use counter*=theorem]{Theorem}{Theorem}%
+\newtcbtheorem[use counter*=theorem,
+  crefname={Theorem}{Theorems},Crefname={Theorem}{Theorems}]
+  {Theorem}{Theorem}%
 {colback=Gray!10!white, colframe=BrickRed!40!Gray, coltitle=white,
   fonttitle=\textnormal, boxed title style={colback=BrickRed!40!Gray}}{thm}
 
 % Corollary Box
-\newtcbtheorem[use counter*=theorem]{Corollary}{Corollary}%
+\newtcbtheorem[use counter*=theorem,
+  crefname={Corollary}{Corollaries},Crefname={Corollary}{Corollaries}]
+  {Corollary}{Corollary}%
 {colback=Gray!10!white, colframe=BrickRed!40!Gray, coltitle=white,
   fonttitle=\textnormal, boxed title style={colback=BrickRed!40!Gray}}{cor}
 
 % Lemma Box
-\newtcbtheorem[use counter*=theorem]{Lemma}{Lemma}%
+\newtcbtheorem[use counter*=theorem,
+  crefname={Lemma}{Lemmas},Crefname={Lemma}{Lemmas}]
+  {Lemma}{Lemma}%
 {colback=Gray!10!white, colframe=BurntOrange!50!Gray, coltitle=white,
   fonttitle=\textnormal, boxed title style={colback=BurntOrange!50!Gray}, breakable}{lem}
 
 % Definition Box
-\newtcbtheorem[use counter*=theorem]{Definition}{Definition}%
+\newtcbtheorem[use counter*=theorem,
+  crefname={Definition}{Definitions},Crefname={Definition}{Definitions}]
+  {Definition}{Definition}%
 {colback=Gray!10!white, colframe=RoyalBlue!40!Gray, coltitle=white,
   fonttitle=\textnormal, boxed title style={colback=RoyalBlue!40!Gray},
   breakable}{def}
